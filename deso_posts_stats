@@ -1,10 +1,11 @@
 import requests
 import json
-
+import csv
+import datetime
 user_public_key = "BC1YLhBH8oPqRRAejbUu9BbFquhLFz6GQ8ZbKk6SAWtFsbdcthVTEw8"  #Enter the public key of the user
 blacklist = ["greenwork32","globalnetwork22"]  #bots accounts username list
 
-NUM_POSTS_TO_FETCH = 2
+NUM_POSTS_TO_FETCH = 3
 COMMENT_SCORE = 15
 FIRST_COMMENT_SCORE = 10
 REPOST_SCORE = 25
@@ -128,6 +129,81 @@ def get_first_commenter(data):
     user_timestamps.sort()
     return user_timestamps[0][1]
 
+def calculate_user_category_scores(post_scores):
+    user_category_scores = {}
+
+    for post_id, user_data in post_scores.items():
+        for user_id, category_scores in user_data.items():
+            if user_id not in user_category_scores:
+                user_category_scores[user_id] = {}
+
+            for category, score in category_scores.items():
+                if category not in user_category_scores[user_id]:
+                    user_category_scores[user_id][category] = 0
+                user_category_scores[user_id][category] += score
+
+    return user_category_scores
+
+def combine_data(post_scores, username_follow):
+    combined_data = {}
+    # Get all unique usernames from both dictionaries
+    all_usernames = set(post_scores.keys()).union(set(username_follow.keys()))
+
+    for username in all_usernames:
+        post_score_data = post_scores.get(username, {})
+        follow_score_data = username_follow.get(username, 0)
+
+        # Calculate total score (sum of post scores and follow counts)
+        filtered_data = {k: v for k, v in post_score_data.items() if k != 'comment_timestamp'}
+        total_score = sum(filtered_data.values()) + follow_score_data
+
+        if username in blacklist:
+            total_score = 0
+            post_score_data=0
+            follow_score_data=0
+
+
+        combined_data[username] = {
+            'post_scores': post_score_data,
+            'follow_score': follow_score_data,
+            'total_score': total_score
+        }
+
+    return combined_data
+
+def generate_csv(data):
+    # Generate filename with current date and time
+    now = datetime.datetime.now()
+    filename = f"{user_public_key}_{len(data)}_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+    # Write data to CSV file
+    with open(filename, 'w', newline='' ,encoding="utf-8") as outfile:
+        writer = csv.writer(outfile)
+
+        # Write header row
+        writer.writerow(["👤","💬","💎","🔁","📢","👍","❤️","👎","😥","😮","😠","😂","📊","➕","💯"])
+
+        # Write data rows
+        for username, details in data:
+            row = [
+                username,
+                details["post_scores"].get('comment', ''),  # Use .get() with a default value
+                details["post_scores"].get('diamond', ''),
+                details["post_scores"].get('repost', ''),
+                details["post_scores"].get('quote_repost', ''),
+                details["post_scores"].get('LIKE', ''),
+                details["post_scores"].get('LOVE', ''),
+                details["post_scores"].get('DISLIKE', ''),
+                details["post_scores"].get('SAD', ''),
+                details["post_scores"].get('ASTONISHED', ''),
+                details["post_scores"].get('ANGRY', ''),
+                details["post_scores"].get('LAUGH', ''),
+                details["post_scores"].get('POLL', ''),
+                details.get('follow_score', ''),
+                details.get('total_score', '')
+            ]
+            writer.writerow(row)
+    print(f"{len(data)} users written to {filename}")
+
 post_scores = {} 
 username_publickey = {}
 
@@ -217,27 +293,8 @@ if last_posts:
                                     print(f"  {poll_type} by: {username}")
                                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                     post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
-                                   
-    
-
-print("post_scores") 
-print(post_scores)
 
 
-def calculate_user_category_scores(post_scores):
-    user_category_scores = {}
-
-    for post_id, user_data in post_scores.items():
-        for user_id, category_scores in user_data.items():
-            if user_id not in user_category_scores:
-                user_category_scores[user_id] = {}
-
-            for category, score in category_scores.items():
-                if category not in user_category_scores[user_id]:
-                    user_category_scores[user_id][category] = 0
-                user_category_scores[user_id][category] += score
-
-    return user_category_scores
 user_scores1 = calculate_user_category_scores(post_scores)
 
 username_follow={}
@@ -247,42 +304,22 @@ for username in user_scores1:
     follow_score = FOLLOW_SCORE if isFollowing else 0
     username_follow[username] = follow_score
 
+print("User Post data:") 
+print(user_scores1)
+
 print("username_follow:")
 print(username_follow)
-
-def combine_data(post_scores, username_follow):
-    combined_data = {}
-    # Get all unique usernames from both dictionaries
-    all_usernames = set(post_scores.keys()).union(set(username_follow.keys()))
-
-    for username in all_usernames:
-        post_score_data = post_scores.get(username, {})
-        follow_score_data = username_follow.get(username, 0)
-
-        # Calculate total score (sum of post scores and follow counts)
-        filtered_data = {k: v for k, v in post_score_data.items() if k != 'comment_timestamp'}
-        total_score = sum(filtered_data.values()) + follow_score_data
-
-        if username in blacklist:
-            total_score = 0
-            post_score_data=0
-            follow_score_data=0
-
-
-        combined_data[username] = {
-            'post_scores': post_score_data,
-            'follow_score': follow_score_data,
-            'total_score': total_score
-        }
-
-    return combined_data
 
 # Combine the data
 combined_data = combine_data(user_scores1, username_follow)
 
 sorted_data = sorted(combined_data.items(), key=lambda item: item[1]['total_score'], reverse=True)
 top_10 = sorted_data[:10]
-
-print("Top 10 User Scores:")
+print()
+print("**Top 10 User Scores**")
 for record in top_10:
     print(record[0]+":"+str(record[1]['total_score']))
+print()
+
+generate_csv(sorted_data)
+generate_csv(top_10)
