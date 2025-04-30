@@ -1,0 +1,224 @@
+import requests
+import json
+
+user_public_key = "BC1YLhBH8oPqRRAejbUu9BbFquhLFz6GQ8ZbKk6SAWtFsbdcthVTEw8"  #Enter the public key of the user
+blacklist = ["greenwork32"]  #bots accounts username list
+
+NUM_POSTS_TO_FETCH = 2
+COMMENT_SCORE = 15
+REPOST_SCORE = 25
+QUOTE_REPOST_SCORE = 25
+FOLLOW_SCORE = 100
+LIKE_SCORE = 1
+POLL_SCORE = 10
+
+like_types = ["LIKE", "LOVE", "DISLIKE", "SAD", "ASTONISHED", "ANGRY", "LAUGH"]
+BASE_URL = "https://node.deso.org/api/v0/"
+
+prof_resp="PublicKeyToProfileEntryResponse"
+tpkbc ="TransactorPublicKeyBase58Check"
+pkbc="PublicKeyBase58Check"
+def api_get(endpoint, payload=None):
+    try:
+        response = requests.post(BASE_URL + endpoint, json=payload)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        print(f"API Error: {e}")
+        return None
+
+def post_associations_counts(post_hash,AssociationType,AssociationValues):
+    payload = {
+        "AssociationType": AssociationType,
+        "AssociationValues": AssociationValues,
+        "PostHashHex": post_hash
+    }
+    data = api_get("post-associations/counts", payload)
+    return data
+
+def get_post_associations(post_hash, AssociationType,AssociationValue):
+    payload = {
+        "AssociationType": AssociationType,
+        "AssociationValue": AssociationValue,
+        "IncludeTransactorProfile": True,
+        "Limit": 100,
+        "PostHashHex": post_hash
+    }
+    data = api_get("post-associations/query", payload)
+    return data
+
+
+def is_following(public_key_base58_check, is_following_public_key_base58_check):
+    payload = {
+        "PublicKeyBase58Check": public_key_base58_check,
+        "IsFollowingPublicKeyBase58Check": is_following_public_key_base58_check
+    }
+    data = api_get("is-following-public-key", payload)
+    return data["IsFollowing"] if "IsFollowing" in data else None
+
+
+def get_quote_reposts(post_hash_hex, reader):
+    payload = {
+        "PostHashHex": post_hash_hex,
+        "Limit": 25,
+        "Offset": 0,
+        "ReaderPublicKeyBase58Check": reader
+    }
+    data = api_get("get-quote-reposts-for-post", payload)
+    return data["QuoteReposts"] if "QuoteReposts" in data else None
+
+
+def get_reposts(post_hash_hex, reader):
+    payload = {
+        "PostHashHex": post_hash_hex,
+        "Limit": 25,
+        "Offset": 0,
+        "ReaderPublicKeyBase58Check": reader
+    }
+    data = api_get("get-reposts-for-post", payload)
+    return data["Reclouters"] if "Reclouters" in data else None
+
+
+def get_diamonds(post_hash_hex, reader):
+    payload = {
+        "PostHashHex": post_hash_hex,
+        "Limit": 25,
+        "Offset": 0,
+        "ReaderPublicKeyBase58Check": reader
+    }
+    data = api_get("get-diamonds-for-post", payload)
+    return data["DiamondSenders"] if "DiamondSenders" in data else None
+
+
+def get_single_post(post_hash_hex, reader_public_key=None, fetch_parents=False, comment_offset=0, comment_limit=100, add_global_feed=False):
+    payload = {
+        "PostHashHex": post_hash_hex,
+        "FetchParents": fetch_parents,
+        "CommentOffset": comment_offset,
+        "CommentLimit": comment_limit
+    }
+    if reader_public_key:
+        payload["ReaderPublicKeyBase58Check"] = reader_public_key
+    if add_global_feed:
+        payload["AddGlobalFeedBool"] = add_global_feed
+    data = api_get("get-single-post", payload)
+    return data["PostFound"] if "PostFound" in data else None
+
+def get_last_posts(public_key, num_to_fetch=1):
+    payload = {
+        "PublicKeyBase58Check": public_key,
+        "NumToFetch": num_to_fetch
+    }
+    data = api_get("get-posts-for-public-key", payload)
+    return data["Posts"] if "Posts" in data and data["Posts"] else None
+
+
+def update_user_scores(username, score, user_scores):
+    user_scores[username] = user_scores.get(username, 0) + score
+    return user_scores
+
+post_scores = {} 
+username_publickey = {}
+user_scores = {}
+
+last_posts = get_last_posts(user_public_key, NUM_POSTS_TO_FETCH)
+
+if last_posts:
+    for post in last_posts:
+        post_hash_hex = post['PostHashHex']
+        if post["Body"] == "":
+            print("Skipping reposts")
+            continue
+        post_scores[post_hash_hex] = {}
+        reader_public_key = user_public_key
+        print(post_hash_hex)
+
+        print("Fetching comments...")
+        single_post_details = get_single_post(post_hash_hex, reader_public_key)
+        if single_post_details and single_post_details["Comments"]:
+            for comment in single_post_details["Comments"]:
+                username = comment["ProfileEntryResponse"]["Username"]
+                public_key = comment["ProfileEntryResponse"][pkbc]
+                username_publickey[username] = public_key
+                print(f"  Comment by: {username}")
+                post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
+                user_scores = update_user_scores(username, COMMENT_SCORE, user_scores)
+        if diamond_sender_details := get_diamonds(post_hash_hex, user_public_key):
+            for sender in diamond_sender_details:
+                username = sender["DiamondSenderProfile"]["Username"]
+                public_key = sender["DiamondSenderProfile"][pkbc]
+                username_publickey[username] = public_key
+                diamond_level_score = pow(10, sender["DiamondLevel"] - 1)
+                print("  Lvl " + str(sender["DiamondLevel"])+ f" Diamond  sent by: {username}")
+                post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
+                user_scores = update_user_scores(username, diamond_level_score, user_scores)
+
+        if repost_details := get_reposts(post_hash_hex, user_public_key):
+            for user in repost_details:
+                username = user["Username"]
+                print(f"  Reposted by: {username}")
+                post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                post_scores[post_hash_hex][username]["repost"] = post_scores[post_hash_hex][username].get("repost", 0) + REPOST_SCORE
+                user_scores = update_user_scores(username, REPOST_SCORE, user_scores)
+
+        if quote_repost_details := get_quote_reposts(post_hash_hex, user_public_key):
+            for user in quote_repost_details:
+                username = user["ProfileEntryResponse"]["Username"]
+                print(f"  Quote reposted by: {username}")
+                post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                post_scores[post_hash_hex][username]["quote_repost"] = post_scores[post_hash_hex][username].get("quote_repost", 0) + QUOTE_REPOST_SCORE
+                user_scores = update_user_scores(username, QUOTE_REPOST_SCORE, user_scores)
+
+
+        like_summary = post_associations_counts(post_hash_hex,"REACTION",like_types)
+        if like_summary["Total"]>0:
+            for like_type in like_summary["Counts"]:
+                if like_summary["Counts"][like_type]>0:
+                        data = get_post_associations(post_hash_hex,"REACTION", like_type)
+                        if data and "Associations" in data:
+                            for record in data["Associations"]:
+                                if data[prof_resp][record[tpkbc]] is not None:
+                                    username = data[prof_resp][record[tpkbc]]["Username"]
+                                    public_key = data[prof_resp][record[tpkbc]][pkbc]
+                                    username_publickey[username] = public_key
+                                    print(f"  {like_type} by: {username}")
+                                    post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                                    post_scores[post_hash_hex][username][f"{like_type}"] = post_scores[post_hash_hex][username].get(f"{like_type}", 0) + LIKE_SCORE
+                                    user_scores = update_user_scores(username, LIKE_SCORE, user_scores)
+
+        if "PollOptions" in post["PostExtraData"]:
+            poll_summary = post_associations_counts(post_hash_hex,"POLL_RESPONSE",json.loads(post["PostExtraData"]["PollOptions"]))
+            if poll_summary["Total"]>0:
+                for poll_type in poll_summary["Counts"]:
+                    if poll_summary["Counts"][poll_type]>0:
+                        data = get_post_associations(post_hash_hex, "POLL_RESPONSE",poll_type)
+                        if data and "Associations" in data:
+                            for record in data["Associations"]:
+                                if data[prof_resp][record[tpkbc]] is not None:
+                                    username = data[prof_resp][record[tpkbc]]["Username"]
+                                    public_key = data[prof_resp][record[tpkbc]][pkbc]
+                                    username_publickey[username] = public_key
+                                    print(f"  {poll_type} by: {username}")
+                                    post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                                    post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
+                                    user_scores = update_user_scores(username, POLL_SCORE, user_scores)
+username_follow={}
+for username in user_scores:
+    if username in blacklist:
+        user_scores[username] = 0
+    else:
+        public_key = username_publickey.get(username)
+        isFollowing = is_following(public_key, user_public_key) if public_key else False
+        follow_score = FOLLOW_SCORE if isFollowing else 0
+        user_scores[username] += follow_score
+        username_follow[username] = follow_score
+        
+print(post_scores)
+print(username_follow)
+
+print("\nTotal User Scores:")
+sorted_total_score = dict(sorted(user_scores.items(), key=lambda item: item[1], reverse=True))
+for username, score in sorted_total_score.items():
+    print(f"  {username}: {score}")
