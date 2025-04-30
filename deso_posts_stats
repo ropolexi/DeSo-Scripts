@@ -156,13 +156,13 @@ if last_posts:
                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                 post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
                 post_scores[post_hash_hex][username]["comment_timestamp"] = timestamp
-                user_scores = update_user_scores(username, COMMENT_SCORE, user_scores)
+                #user_scores = update_user_scores(username, COMMENT_SCORE, user_scores)
         
         first_commenter = get_first_commenter(post_scores[post_hash_hex])
         print(f'first_commenter:{first_commenter}')
         if first_commenter is not None:
             post_scores[post_hash_hex][first_commenter]["comment"] = post_scores[post_hash_hex][first_commenter].get("comment", 0) + FIRST_COMMENT_SCORE
-            user_scores = update_user_scores(first_commenter, FIRST_COMMENT_SCORE, user_scores)
+            #user_scores = update_user_scores(first_commenter, FIRST_COMMENT_SCORE, user_scores)
 
         if diamond_sender_details := get_diamonds(post_hash_hex, user_public_key):
             for sender in diamond_sender_details:
@@ -173,7 +173,7 @@ if last_posts:
                 print("  Lvl " + str(sender["DiamondLevel"])+ f" Diamond  sent by: {username}")
                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                 post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
-                user_scores = update_user_scores(username, diamond_level_score, user_scores)
+                #user_scores = update_user_scores(username, diamond_level_score, user_scores)
 
         if repost_details := get_reposts(post_hash_hex, user_public_key):
             for user in repost_details:
@@ -181,7 +181,7 @@ if last_posts:
                 print(f"  Reposted by: {username}")
                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                 post_scores[post_hash_hex][username]["repost"] = post_scores[post_hash_hex][username].get("repost", 0) + REPOST_SCORE
-                user_scores = update_user_scores(username, REPOST_SCORE, user_scores)
+                #user_scores = update_user_scores(username, REPOST_SCORE, user_scores)
 
         if quote_repost_details := get_quote_reposts(post_hash_hex, user_public_key):
             for user in quote_repost_details:
@@ -189,7 +189,7 @@ if last_posts:
                 print(f"  Quote reposted by: {username}")
                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                 post_scores[post_hash_hex][username]["quote_repost"] = post_scores[post_hash_hex][username].get("quote_repost", 0) + QUOTE_REPOST_SCORE
-                user_scores = update_user_scores(username, QUOTE_REPOST_SCORE, user_scores)
+                #user_scores = update_user_scores(username, QUOTE_REPOST_SCORE, user_scores)
 
 
         like_summary = post_associations_counts(post_hash_hex,"REACTION",like_types)
@@ -206,7 +206,7 @@ if last_posts:
                                     print(f"  {like_type} by: {username}")
                                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                     post_scores[post_hash_hex][username][f"{like_type}"] = post_scores[post_hash_hex][username].get(f"{like_type}", 0) + LIKE_SCORE
-                                    user_scores = update_user_scores(username, LIKE_SCORE, user_scores)
+                                    #user_scores = update_user_scores(username, LIKE_SCORE, user_scores)
 
         if "PollOptions" in post["PostExtraData"]:
             poll_summary = post_associations_counts(post_hash_hex,"POLL_RESPONSE",json.loads(post["PostExtraData"]["PollOptions"]))
@@ -223,7 +223,7 @@ if last_posts:
                                     print(f"  {poll_type} by: {username}")
                                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                     post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
-                                    user_scores = update_user_scores(username, POLL_SCORE, user_scores)
+                                    #user_scores = update_user_scores(username, POLL_SCORE, user_scores)
                                    
     
 username_follow={}
@@ -240,8 +240,49 @@ for username in user_scores:
 print(post_scores)
 print(username_follow)
 
+def calculate_user_category_scores(post_scores):
+    user_category_scores = {}
 
-print("\nTotal User Scores:")
-sorted_total_score = dict(sorted(user_scores.items(), key=lambda item: item[1], reverse=True))
-for username, score in sorted_total_score.items():
-    print(f"  {username}: {score}")
+    for post_id, user_data in post_scores.items():
+        for user_id, category_scores in user_data.items():
+            if user_id not in user_category_scores:
+                user_category_scores[user_id] = {}
+
+            for category, score in category_scores.items():
+                if category not in user_category_scores[user_id]:
+                    user_category_scores[user_id][category] = 0
+                user_category_scores[user_id][category] += score
+
+    return user_category_scores
+user_scores1 = calculate_user_category_scores(post_scores)
+
+def combine_data(post_scores, username_follow):
+    combined_data = {}
+    # Get all unique usernames from both dictionaries
+    all_usernames = set(post_scores.keys()).union(set(username_follow.keys()))
+
+    for username in all_usernames:
+        post_score_data = post_scores.get(username, {})
+        follow_score_data = username_follow.get(username, 0)
+
+        # Calculate total score (sum of post scores and follow counts)
+        filtered_data = {k: v for k, v in post_score_data.items() if k != 'comment_timestamp'}
+        total_score = sum(filtered_data.values()) + follow_score_data
+
+        combined_data[username] = {
+            'post_scores': post_score_data,
+            'follow_score': follow_score_data,
+            'total_score': total_score
+        }
+
+    return combined_data
+
+# Combine the data
+combined_data = combine_data(user_scores1, username_follow)
+
+sorted_data = sorted(combined_data.items(), key=lambda item: item[1]['total_score'], reverse=True)
+top_10 = sorted_data[:10]
+
+print("\Top 10 User Scores:")
+for record in top_10:
+    print(record[0]+":"+str(record[1]['total_score']))
