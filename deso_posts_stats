@@ -6,6 +6,7 @@ blacklist = ["greenwork32"]  #bots accounts username list
 
 NUM_POSTS_TO_FETCH = 2
 COMMENT_SCORE = 15
+FIRST_COMMENT_SCORE = 10
 REPOST_SCORE = 25
 QUOTE_REPOST_SCORE = 25
 FOLLOW_SCORE = 100
@@ -117,6 +118,16 @@ def update_user_scores(username, score, user_scores):
     user_scores[username] = user_scores.get(username, 0) + score
     return user_scores
 
+def get_first_commenter(data):
+    if not data:
+        return None
+    user_timestamps = []
+    for username, info in data.items():
+        if "comment_timestamp" in info:
+            user_timestamps.append((info['comment_timestamp'], username))
+    user_timestamps.sort()
+    return user_timestamps[0][1]
+
 post_scores = {} 
 username_publickey = {}
 user_scores = {}
@@ -137,13 +148,22 @@ if last_posts:
         single_post_details = get_single_post(post_hash_hex, reader_public_key)
         if single_post_details and single_post_details["Comments"]:
             for comment in single_post_details["Comments"]:
+                timestamp = comment["TimestampNanos"]
                 username = comment["ProfileEntryResponse"]["Username"]
                 public_key = comment["ProfileEntryResponse"][pkbc]
                 username_publickey[username] = public_key
                 print(f"  Comment by: {username}")
                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                 post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
+                post_scores[post_hash_hex][username]["comment_timestamp"] = timestamp
                 user_scores = update_user_scores(username, COMMENT_SCORE, user_scores)
+        
+        first_commenter = get_first_commenter(post_scores[post_hash_hex])
+        print(f'first_commenter:{first_commenter}')
+        if first_commenter is not None:
+            post_scores[post_hash_hex][first_commenter]["comment"] = post_scores[post_hash_hex][first_commenter].get("comment", 0) + FIRST_COMMENT_SCORE
+            user_scores = update_user_scores(first_commenter, FIRST_COMMENT_SCORE, user_scores)
+
         if diamond_sender_details := get_diamonds(post_hash_hex, user_public_key):
             for sender in diamond_sender_details:
                 username = sender["DiamondSenderProfile"]["Username"]
@@ -204,6 +224,8 @@ if last_posts:
                                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                     post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
                                     user_scores = update_user_scores(username, POLL_SCORE, user_scores)
+                                   
+    
 username_follow={}
 for username in user_scores:
     if username in blacklist:
@@ -217,6 +239,7 @@ for username in user_scores:
         
 print(post_scores)
 print(username_follow)
+
 
 print("\nTotal User Scores:")
 sorted_total_score = dict(sorted(user_scores.items(), key=lambda item: item[1], reverse=True))
