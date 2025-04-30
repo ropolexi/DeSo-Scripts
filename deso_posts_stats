@@ -209,7 +209,7 @@ username_publickey = {}
 
 
 last_posts = get_last_posts(user_public_key, NUM_POSTS_TO_FETCH)
-
+index=0
 if last_posts:
     for post in last_posts:
         post_hash_hex = post['PostHashHex']
@@ -218,7 +218,8 @@ if last_posts:
             continue
         post_scores[post_hash_hex] = {}
         reader_public_key = user_public_key
-        print(post_hash_hex)
+        print("["+str(index)+"]"+post_hash_hex)
+        index +=1
 
         print("Fetching comments...")
         single_post_details = get_single_post(post_hash_hex, reader_public_key)
