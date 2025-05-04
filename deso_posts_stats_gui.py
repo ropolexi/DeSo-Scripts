@@ -406,7 +406,10 @@ def button_click():
         if calculation_thread and calculation_thread.is_alive():
             output_label.config(text="Existing calculation is running.")
             return
-        NUM_POSTS_TO_FETCH = int(entry3.get())
+        if len(post_hash)>0:
+            NUM_POSTS_TO_FETCH=1
+        else:
+            NUM_POSTS_TO_FETCH = int(entry3.get())
         calculation_thread = threading.Thread(target=calculate_stats, args=(user, post_hash, output_label,NUM_POSTS_TO_FETCH))
         calculation_thread.start()
      
@@ -443,7 +446,7 @@ stop_button = ttk.Button(root, text="Stop", command=stop_calculation)
 stop_button.grid(row=3, column=1, columnspan=1, pady=10)
 
 
-output_label = ttk.Label(root, text="Result will appear here")
+output_label = ttk.Label(root, text="")
 output_label.grid(row=4, column=0, columnspan=2, pady=5)
 
 
