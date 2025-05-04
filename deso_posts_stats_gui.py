@@ -346,10 +346,16 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                                         post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
 
     output_label.config(text=f"Calculating...")
+    
     user_scores1 = calculate_user_category_scores(post_scores)
-
+    result_steps.config(text=f"calculate user category scores")
     username_follow={}
+    result_steps.config(text=f"Fetching following...")
+    follow_index = 1
     for username in user_scores1:
+        follow_size= len(user_scores1)
+        result_steps.config(text=f"Fetching follow...({follow_index}/{follow_size})")
+        follow_index +=1
         public_key = username_publickey.get(username)
         isFollowing = is_following(public_key, user_public_key) if public_key else False
         follow_score = FOLLOW_SCORE if isFollowing else 0
@@ -371,7 +377,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     
     root.title("Deso Stats Table")
     column_widths = {
-        "Username": 100,  # Adjust as needed
+        "Username": 120,  # Adjust as needed
         "comment": 30,
         "diamond": 30,
         "repost": 30,
