@@ -203,8 +203,8 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                 return
             post_hash_hex = post['PostHashHex']
             output_label.config(text=f"Calculating...{str(index)}/{NUM_POSTS_TO_FETCH}")
-           
-            #entry2.delete("1.0", tk.END) 
+            #if len(entry2.get())>0:
+            entry2.delete(0, tk.END) 
             entry2.insert(tk.END, post_hash_hex)
 
             if post["Body"] == "":
@@ -321,7 +321,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                                         post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                         post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
 
-
+    output_label.config(text=f"Calculating...")
     user_scores1 = calculate_user_category_scores(post_scores)
 
     username_follow={}
@@ -469,7 +469,7 @@ stop_button.grid(row=3, column=1, columnspan=1, pady=10)
 output_label = ttk.Label(root, text="")
 output_label.grid(row=4, column=0, columnspan=2, pady=5)
 
-label1 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID")
+label1 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Clear if there is any Post ID\n3. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID")
 label1.grid(row=5, column=0, columnspan=2,sticky="w", padx=5, pady=5)
 
 root.mainloop()
