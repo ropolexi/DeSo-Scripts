@@ -345,12 +345,11 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                                         post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                         post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
 
-    output_label.config(text=f"Calculating...")
+    output_label.config(text=f"Fetching following...")
     
     user_scores1 = calculate_user_category_scores(post_scores)
     result_steps.config(text=f"calculate user category scores")
     username_follow={}
-    result_steps.config(text=f"Fetching following...")
     follow_index = 1
     for username in user_scores1:
         follow_size= len(user_scores1)
