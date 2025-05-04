@@ -413,6 +413,11 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
 def button_click():
     global calculation_thread,stop_flag
     try:
+        stop_flag = False  # Reset stop flag
+        if calculation_thread and calculation_thread.is_alive():
+            output_label.config(text="Existing calculation is running.")
+            return
+        
         user = entry1.get()
         if len(user) != 55:
             user_data = get_single_profile(user)
@@ -420,10 +425,7 @@ def button_click():
         else:
             user_pub_key = user
         post_hash = entry2.get()
-        stop_flag = False  # Reset stop flag
-        if calculation_thread and calculation_thread.is_alive():
-            output_label.config(text="Existing calculation is running.")
-            return
+        
         if len(post_hash)>0:
             NUM_POSTS_TO_FETCH=1
         else:
