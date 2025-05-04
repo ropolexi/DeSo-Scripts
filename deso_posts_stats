@@ -6,7 +6,7 @@ user_public_key = "BC1YLhBH8oPqRRAejbUu9BbFquhLFz6GQ8ZbKk6SAWtFsbdcthVTEw8"  #En
 single_post_hash_check=""#"14583698498d52f66f3b8a2b9e59bc764d7fde4aca988a34ff93f0cdfa7bd498"
 blacklist = ["greenwork32","globalnetwork22"]  #bots accounts username list
 
-NUM_POSTS_TO_FETCH = 5
+NUM_POSTS_TO_FETCH = 20
 COMMENT_SCORE = 15
 FIRST_COMMENT_SCORE = 10
 REPOST_SCORE = 25
@@ -230,23 +230,41 @@ if last_posts:
             for comment in single_post_details["Comments"]:
                 timestamp = comment["TimestampNanos"]
                 username = comment["ProfileEntryResponse"]["Username"]
+                
                 public_key = comment["ProfileEntryResponse"][pkbc]
                 username_publickey[username] = public_key
                 print(f"  Comment by: {username}")
+                body = comment["Body"]
+                print(f"  Comment : {body}")
                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                 post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
                 post_scores[post_hash_hex][username]["comment_timestamp"] = timestamp
 
                 single_post_details_sub = get_single_post(comment["PostHashHex"], reader_public_key)
                 if single_post_details_sub and single_post_details_sub["Comments"]:
-                    print("==>Sub comment")
+                    print("==>Sub 1 comment")
                     for comment in single_post_details_sub["Comments"]:
                         username = comment["ProfileEntryResponse"]["Username"]
                         public_key = comment["ProfileEntryResponse"][pkbc]
                         username_publickey[username] = public_key
                         print(f"    Comment by: {username}")
+                        body = comment["Body"]
+                        print(f"    Comment : {body}")
                         post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                         post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
+
+                        single_post_details_sub2 = get_single_post(comment["PostHashHex"], reader_public_key)
+                        if single_post_details_sub2 and single_post_details_sub2["Comments"]:
+                            print("==>Sub 2 comment")
+                            for comment in single_post_details_sub2["Comments"]:
+                                username = comment["ProfileEntryResponse"]["Username"]
+                                public_key = comment["ProfileEntryResponse"][pkbc]
+                                username_publickey[username] = public_key
+                                print(f"        Comment by: {username}")
+                                body = comment["Body"]
+                                print(f"        Comment : {body}")
+                                post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                                post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
 
         
         first_commenter = get_first_commenter(post_scores[post_hash_hex])
