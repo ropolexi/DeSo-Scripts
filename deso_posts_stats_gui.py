@@ -195,14 +195,14 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
         last_posts=[{"PostHashHex":single_post_hash_check,"Body":"Single","PostExtraData":{}}]
     else:
         last_posts = get_last_posts(user_public_key, NUM_POSTS_TO_FETCH)
-    index=0
+    index=1
     if last_posts:
         for post in last_posts:
             if stop_flag:
                 output_label.config(text="Calculation stopped.")
                 return
             post_hash_hex = post['PostHashHex']
-            output_label.config(text=f"Calculating...{str(index)}/{NUM_POSTS_TO_FETCH}")
+            output_label.config(text=f"Calculating...{index}/{NUM_POSTS_TO_FETCH}")
             #if len(entry2.get())>0:
             entry2.delete(0, tk.END) 
             entry2.insert(tk.END, post_hash_hex)
@@ -216,9 +216,14 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             index +=1
 
             print("Fetching comments...")
+            result_steps.config(text="Fetching comments...")
             single_post_details = get_single_post(post_hash_hex, reader_public_key)
             if single_post_details and single_post_details["Comments"]:
+                comment_index=1
                 for comment in single_post_details["Comments"]:
+                    comments_size = len(single_post_details["Comments"])
+                    result_steps.config(text=f"Fetching comments...({comment_index}/{comments_size})")
+                    comment_index +=1
                     timestamp = comment["TimestampNanos"]
                     username = comment["ProfileEntryResponse"]["Username"]
                     
@@ -263,8 +268,14 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             if first_commenter is not None:
                 post_scores[post_hash_hex][first_commenter]["comment"] = post_scores[post_hash_hex][first_commenter].get("comment", 0) + FIRST_COMMENT_SCORE
 
+            result_steps.config(text="Fetching diamonds...")
+            
             if diamond_sender_details := get_diamonds(post_hash_hex, user_public_key):
+                diamond_index=1
                 for sender in diamond_sender_details:
+                    diamond_size=len(diamond_sender_details)
+                    result_steps.config(text=f"Fetching diamonds...({diamond_index}/{diamond_size})")
+                    diamond_index +=1
                     username = sender["DiamondSenderProfile"]["Username"]
                     public_key = sender["DiamondSenderProfile"][pkbc]
                     username_publickey[username] = public_key
@@ -273,26 +284,38 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                     post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
 
+            result_steps.config(text="Fetching reposts...")
             if repost_details := get_reposts(post_hash_hex, user_public_key):
-            
+                repost_index=1
                 for user in repost_details:
+                    repost_size= len(repost_details)
+                    result_steps.config(text=f"Fetching reposts...({repost_index}/{repost_size})")
+                    repost_index +=1
                     username = user["Username"]
                     print(f"  Reposted by: {username}")
                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                     post_scores[post_hash_hex][username]["repost"] = post_scores[post_hash_hex][username].get("repost", 0) + REPOST_SCORE
 
+            result_steps.config(text="Fetching quote reposts...")
             if quote_repost_details := get_quote_reposts(post_hash_hex, user_public_key):
-                
+                quote_repost_index = 1
                 for user in quote_repost_details:
+                    quote_repost_size= len(quote_repost_details)
+                    result_steps.config(text=f"Fetching quote reposts...({quote_repost_index}/{quote_repost_size})")
+                    quote_repost_index +=1
                     username = user["ProfileEntryResponse"]["Username"]
                     print(f"  Quote reposted by: {username}")
                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                     post_scores[post_hash_hex][username]["quote_repost"] = post_scores[post_hash_hex][username].get("quote_repost", 0) + QUOTE_REPOST_SCORE
 
-
+            result_steps.config(text="Fetching reactions...")
             like_summary = post_associations_counts(post_hash_hex,"REACTION",like_types)
             if like_summary["Total"]>0:
+                like_index = 1
                 for like_type in like_summary["Counts"]:
+                    like_size= len(like_summary["Counts"])
+                    result_steps.config(text=f"Fetching likes...({like_index}/{like_size})")
+                    like_index +=1
                     if like_summary["Counts"][like_type]>0:
                             data = get_post_associations(post_hash_hex,"REACTION", like_type)
                             if data and "Associations" in data:
@@ -306,6 +329,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                                         post_scores[post_hash_hex][username][f"{like_type}"] = post_scores[post_hash_hex][username].get(f"{like_type}", 0) + LIKE_SCORE
 
             if "PollOptions" in post["PostExtraData"]:
+                result_steps.config(text="Fetching polls...")
                 poll_summary = post_associations_counts(post_hash_hex,"POLL_RESPONSE",json.loads(post["PostExtraData"]["PollOptions"]))
                 if poll_summary["Total"]>0:
                     for poll_type in poll_summary["Counts"]:
@@ -469,8 +493,11 @@ stop_button.grid(row=3, column=1, columnspan=1, pady=10)
 output_label = ttk.Label(root, text="")
 output_label.grid(row=4, column=0, columnspan=2, pady=5)
 
-label1 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Clear if there is any Post ID\n3. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID")
-label1.grid(row=5, column=0, columnspan=2,sticky="w", padx=5, pady=5)
+label4 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Clear if there is any Post ID\n3. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID")
+label4.grid(row=5, column=0, columnspan=1,sticky="w", padx=5, pady=5)
+
+result_steps = ttk.Label(root, text="")
+result_steps.grid(row=5, column=1, columnspan=1,sticky="w", padx=5, pady=5)
 
 root.mainloop()
 
