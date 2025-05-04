@@ -33,6 +33,15 @@ def api_get(endpoint, payload=None):
         print(f"API Error: {e}")
         return None
 
+def get_single_profile(Username):
+    payload = {
+        "NoErrorOnMissing": False,
+        "PublicKeyBase58Check": "",
+        "Username": Username
+    }
+    data = api_get("get-single-profile", payload)
+    return data
+
 def post_associations_counts(post_hash,AssociationType,AssociationValues):
     payload = {
         "AssociationType": AssociationType,
@@ -194,6 +203,10 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
                 return
             post_hash_hex = post['PostHashHex']
             output_label.config(text=f"Calculating...{str(index)}/{NUM_POSTS_TO_FETCH}")
+           
+            #entry2.delete("1.0", tk.END) 
+            entry2.insert(tk.END, post_hash_hex)
+
             if post["Body"] == "":
                 print("Skipping reposts")
                 continue
@@ -401,6 +414,11 @@ def button_click():
     global calculation_thread,stop_flag
     try:
         user = entry1.get()
+        if len(user) != 55:
+            user_data = get_single_profile(user)
+            user_pub_key = user_data["Profile"]["PublicKeyBase58Check"]
+        else:
+            user_pub_key = user
         post_hash = entry2.get()
         stop_flag = False  # Reset stop flag
         if calculation_thread and calculation_thread.is_alive():
@@ -410,7 +428,7 @@ def button_click():
             NUM_POSTS_TO_FETCH=1
         else:
             NUM_POSTS_TO_FETCH = int(entry3.get())
-        calculation_thread = threading.Thread(target=calculate_stats, args=(user, post_hash, output_label,NUM_POSTS_TO_FETCH))
+        calculation_thread = threading.Thread(target=calculate_stats, args=(user_pub_key, post_hash, output_label,NUM_POSTS_TO_FETCH))
         calculation_thread.start()
      
     except Exception as e:
@@ -424,19 +442,19 @@ def stop_calculation():
 root = tk.Tk()
 root.title("Deso Stats Calculator")
 
-label1 = ttk.Label(root, text="User Public Key:")
+label1 = ttk.Label(root, text="User Public Key or Username:")
 label1.grid(row=0, column=0, sticky="w", padx=5, pady=5)
-entry1 = ttk.Entry(root, width=30)
+entry1 = ttk.Entry(root, width=70)
 entry1.grid(row=0, column=1, padx=5, pady=5)
 
-label2 = ttk.Label(root, text="Post Hash Hex (optional):")
+label2 = ttk.Label(root, text="Post ID (Single post Stats):")
 label2.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-entry2 = ttk.Entry(root, width=30)
+entry2 = ttk.Entry(root, width=70)
 entry2.grid(row=1, column=1, padx=5, pady=5)
 
 label3 = ttk.Label(root, text="How many posts to check:")
 label3.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-entry3 = ttk.Entry(root, width=10)
+entry3 = ttk.Entry(root, width=70)
 entry3.grid(row=2, column=1, padx=5, pady=5)
 
 calculate_button = ttk.Button(root, text="Calculate", command=button_click)
@@ -449,6 +467,8 @@ stop_button.grid(row=3, column=1, columnspan=1, pady=10)
 output_label = ttk.Label(root, text="")
 output_label.grid(row=4, column=0, columnspan=2, pady=5)
 
+label1 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID")
+label1.grid(row=5, column=0, columnspan=2,sticky="w", padx=5, pady=5)
 
 root.mainloop()
 
