@@ -360,6 +360,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
         follow_score = FOLLOW_SCORE if isFollowing else 0
         username_follow[username] = follow_score
 
+    
     print("User Post data:") 
     print(user_scores1)
 
@@ -371,7 +372,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
 
     sorted_data = sorted(combined_data.items(), key=lambda item: item[1]['total_score'], reverse=True)
     top_10 = sorted_data[:10]
-    output_label.config(text="Done")
+    
     root = tk.Tk()
     
     root.title("Deso Stats Table")
@@ -436,8 +437,8 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     tree.pack(pady=10)
 
     root.mainloop()
-
-
+    output_label.config(text=f"Done")
+    result_steps.config(text="")
 
 def button_click():
     global calculation_thread,stop_flag
