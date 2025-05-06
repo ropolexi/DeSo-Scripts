@@ -361,10 +361,10 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
         username_follow[username] = follow_score
 
     
-    print("User Post data:") 
+    print("\nUser Post data:") 
     print(user_scores1)
 
-    print("username_follow:")
+    print("\nusername_follow:")
     print(username_follow)
 
     # Combine the data
@@ -372,25 +372,32 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
 
     sorted_data = sorted(combined_data.items(), key=lambda item: item[1]['total_score'], reverse=True)
     top_10 = sorted_data[:10]
+    print()
+    print("**Top 10 User Scores**")
+    print_to_terminal("**Top 10 User Scores**")
+    for record in top_10:
+        print(record[0]+":"+str(record[1]['total_score']))
+        print_to_terminal(record[0]+":"+str(record[1]['total_score']))
+    print()
     
     root = tk.Tk()
     
     root.title("Deso Stats Table")
     column_widths = {
         "Username": 120,  # Adjust as needed
-        "comment": 30,
-        "diamond": 30,
-        "repost": 30,
-        "quote_repost": 30,
-        "LIKE": 30,
-        "LOVE": 30,
-        "DISLIKE": 30,
-        "SAD": 30,
-        "ASTONISHED": 30,
-        "ANGRY": 30,
-        "LAUGH": 30,
-        "poll": 30,
-        "Follow Score": 30,
+        "comment": 40,
+        "diamond": 40,
+        "repost": 40,
+        "quote_repost": 40,
+        "LIKE": 40,
+        "LOVE": 40,
+        "DISLIKE": 40,
+        "SAD": 40,
+        "ASTONISHED": 40,
+        "ANGRY": 40,
+        "LAUGH": 40,
+        "poll": 40,
+        "Follow Score": 40,
         "Total Score": 40
     }
 
@@ -466,6 +473,12 @@ def button_click():
     except Exception as e:
         output_label.config(text=f"Error: {e}")  # Display error if something goes wrong
 
+def print_to_terminal(text):
+        text_area.config(state='normal')  # Enable writing
+        text_area.insert(tk.END, text + '\n')
+        text_area.see(tk.END)  # Scroll to the end
+        text_area.config(state='disabled') # Disable writing again
+
 def stop_calculation():
     global stop_flag
     stop_flag = True
@@ -504,6 +517,15 @@ label4.grid(row=5, column=0, columnspan=1,sticky="w", padx=5, pady=5)
 
 result_steps = ttk.Label(root, text="")
 result_steps.grid(row=5, column=1, columnspan=1,sticky="w", padx=5, pady=5)
+
+text_area = tk.Text(root, height=20, width=80)
+text_area.grid(row=6, column=0,columnspan=2,pady=10, padx=10)
+text_area.config(state='disabled') 
+scrollbar = ttk.Scrollbar(root, command=text_area.yview)
+scrollbar.grid(row=6, column=2)
+text_area['yscrollcommand'] = scrollbar.set
+
+
 
 root.mainloop()
 
