@@ -3,10 +3,7 @@ from tkinter import ttk
 import requests
 import json
 import threading  # For background calculations
-from ollama import chat
-from ollama import ChatResponse
-from pydantic import BaseModel
-from typing import Literal
+
 blacklist = ["greenwork32","globalnetwork22"]  #bots accounts username list
 
 COMMENT_SCORE = 15
