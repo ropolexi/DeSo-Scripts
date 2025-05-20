@@ -18,7 +18,6 @@ POLL_SCORE = 10
 like_types = ["LIKE", "LOVE", "DISLIKE", "SAD", "ASTONISHED", "ANGRY", "LAUGH"]
 BASE_URL = "https://node.deso.org/api/v0/"
 
-MODEL="gemma3:12b"
 prof_resp="PublicKeyToProfileEntryResponse"
 tpkbc ="TransactorPublicKeyBase58Check"
 pkbc="PublicKeyBase58Check"
@@ -51,7 +50,6 @@ def post_associations_counts(post_hash,AssociationType,AssociationValues):
         "AssociationValues": AssociationValues,
         "PostHashHex": post_hash
     }
-    #print(payload)
     data = api_get("post-associations/counts", payload)
     return data
 
@@ -184,7 +182,6 @@ def combine_data(post_scores, username_follow):
             post_score_data=0
             follow_score_data=0
 
-
         combined_data[username] = {
             'post_scores': post_score_data,
             'follow_score': follow_score_data,
@@ -220,7 +217,6 @@ def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_
             post_scores[post_hash_hex][username]["comment_timestamp"] = timestamp
             post_comments_body[post_hash_hex]["comments"][username] = body
             
-
             single_post_details_sub = get_single_post(comment["PostHashHex"], reader_public_key)
             if single_post_details_sub and single_post_details_sub["Comments"]:
                 print("==>Sub 1 comment")
@@ -332,7 +328,6 @@ def update_polls(post,post_hash_hex,username_publickey,post_scores):
                                         print(f"  {poll_type} by: {username}")
                                         post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                         post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
-
 
 def update_following(user_scores1,username_publickey,user_public_key,username_follow):
     output_label.config(text=f"Fetching following...")
@@ -481,7 +476,6 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             thread5 = threading.Thread(target=update_reactions, args=(post_hash_hex,username_publickey,post_scores))
             thread6 = threading.Thread(target=update_polls, args=(post,post_hash_hex,username_publickey,post_scores))
 
-
             thread1.start()
             thread2.start()
             thread3.start()
@@ -497,18 +491,12 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             thread6.join()
             print("Thread end")
 
-            # get_first_commenter(post_scores,post_hash_hex)
-
-
-    
-    
     user_scores1 = calculate_user_category_scores(post_scores)
     result_steps.config(text=f"calculate user category scores")
     username_follow={}
     
     username_follow = update_following(user_scores1,username_publickey,user_public_key,username_follow)
 
-    
     print("\nUser Post data:") 
     print(user_scores1)
 
@@ -574,13 +562,11 @@ def button_click():
                 output_label.config(text="Number of posts to check is Empty")
                 return
         
-       
         if len(user) != 55:
             user_data = get_single_profile(user)
             user_pub_key = user_data["Profile"]["PublicKeyBase58Check"]
         else:
             user_pub_key = user
-        
         
         if len(post_hash)>0:
             NUM_POSTS_TO_FETCH=1
