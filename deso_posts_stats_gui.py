@@ -15,6 +15,9 @@ FOLLOW_SCORE = 100
 LIKE_SCORE = 1
 POLL_SCORE = 10
 
+backround_colour = "#00a86b"
+foreground = "white"
+
 like_types = ["LIKE", "LOVE", "DISLIKE", "SAD", "ASTONISHED", "ANGRY", "LAUGH"]
 BASE_URL = "https://node.deso.org/api/v0/"
 
@@ -25,6 +28,7 @@ pkbc="PublicKeyBase58Check"
 # Global variables for thread control
 stop_flag = True
 calculation_thread = None
+
 
 def api_get(endpoint, payload=None):
     try:
@@ -190,7 +194,7 @@ def combine_data(post_scores, username_follow):
 
     return combined_data
 
-def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores):
+def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores,info):
     print("Fetching comments...")
     result_steps.config(text="Fetching comments...")
     single_post_details = get_single_post(post_hash_hex, reader_public_key)
@@ -209,6 +213,7 @@ def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_
             username_publickey[username] = public_key
             print(f"  Comment by: {username}")
             body = comment["Body"]
+            info["comments_count"] = info.get("comments_count",0) + 1
             print(f"  Comment : {body}")
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             
@@ -226,6 +231,7 @@ def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_
                     username_publickey[username] = public_key
                     print(f"    Comment by: {username}")
                     body = comment["Body"]
+                    info["comments_count"] = info.get("comments_count",0) + 1
                     print(f"    Comment : {body}")
                     post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                     post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
@@ -239,12 +245,13 @@ def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_
                             username_publickey[username] = public_key
                             print(f"        Comment by: {username}")
                             body = comment["Body"]
+                            info["comments_count"] = info.get("comments_count",0) + 1
                             print(f"        Comment : {body}")
                             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                             post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
         get_first_commenter(post_scores,post_hash_hex)
-
-def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores):
+        print(info)
+def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores,info):
     result_steps.config(text="Fetching diamonds...")
             
     if diamond_sender_details := get_diamonds(post_hash_hex, user_public_key):
@@ -258,9 +265,17 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
             username_publickey[username] = public_key
             diamond_level_score = pow(10, sender["DiamondLevel"] - 1)
             print("  Lvl " + str(sender["DiamondLevel"])+ f" Diamond  sent by: {username}")
+            if sender["DiamondLevel"]==1:
+                info["diamonds_lvl1_count"] = info.get("diamonds_lvl1_count",0) + 1
+            if sender["DiamondLevel"]==2:
+                info["diamonds_lvl2_count"] = info.get("diamonds_lvl2_count",0) + 1
+            if sender["DiamondLevel"]==3:
+                info["diamonds_lvl3_count"] = info.get("diamonds_lvl3_count",0) + 1
+            if sender["DiamondLevel"]==4:
+                info["diamonds_lvl4_count"] = info.get("diamonds_lvl4_count",0) + 1
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score           
-def update_reposts(post_hash_hex,user_public_key,post_scores):
+def update_reposts(post_hash_hex,user_public_key,post_scores,info):
     result_steps.config(text="Fetching reposts...")
     if repost_details := get_reposts(post_hash_hex, user_public_key):
         repost_index=1
@@ -268,12 +283,13 @@ def update_reposts(post_hash_hex,user_public_key,post_scores):
             repost_size= len(repost_details)
             result_steps.config(text=f"Fetching reposts...({repost_index}/{repost_size})")
             repost_index +=1
+            info["reposts_count"] = info.get("reposts_count",0) + 1
             username = user["Username"]
             print(f"  Reposted by: {username}")
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             post_scores[post_hash_hex][username]["repost"] = post_scores[post_hash_hex][username].get("repost", 0) + REPOST_SCORE
-
-def update_quote_reposts(post_hash_hex,user_public_key,post_scores):
+            
+def update_quote_reposts(post_hash_hex,user_public_key,post_scores,info):
     result_steps.config(text="Fetching quote reposts...")
     if quote_repost_details := get_quote_reposts(post_hash_hex, user_public_key):
         quote_repost_index = 1
@@ -281,12 +297,13 @@ def update_quote_reposts(post_hash_hex,user_public_key,post_scores):
             quote_repost_size= len(quote_repost_details)
             result_steps.config(text=f"Fetching quote reposts...({quote_repost_index}/{quote_repost_size})")
             quote_repost_index +=1
+            info["quote_reposts_count"] = info.get("quote_reposts_count",0) + 1
             username = user["ProfileEntryResponse"]["Username"]
             print(f"  Quote reposted by: {username}")
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             post_scores[post_hash_hex][username]["quote_repost"] = post_scores[post_hash_hex][username].get("quote_repost", 0) + QUOTE_REPOST_SCORE
             
-def update_reactions(post_hash_hex,username_publickey,post_scores):
+def update_reactions(post_hash_hex,username_publickey,post_scores,info):
     result_steps.config(text="Fetching reactions...")
     like_summary = post_associations_counts(post_hash_hex,"REACTION",like_types)
     if like_summary["Total"]>0:
@@ -304,10 +321,11 @@ def update_reactions(post_hash_hex,username_publickey,post_scores):
                                 public_key = data[prof_resp][record[tpkbc]][pkbc]
                                 username_publickey[username] = public_key
                                 print(f"  {like_type} by: {username}")
+                                info["reaction_count"] = info.get("reaction_count",0) + 1
                                 post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                 post_scores[post_hash_hex][username][f"{like_type}"] = post_scores[post_hash_hex][username].get(f"{like_type}", 0) + LIKE_SCORE
 
-def update_polls(post,post_hash_hex,username_publickey,post_scores):
+def update_polls(post,post_hash_hex,username_publickey,post_scores,info):
     if "PollOptions" in post["PostExtraData"]:
         result_steps.config(text="Fetching polls...")
         poll_summary = post_associations_counts(post_hash_hex,"POLL_RESPONSE",json.loads(post["PostExtraData"]["PollOptions"]))
@@ -326,6 +344,7 @@ def update_polls(post,post_hash_hex,username_publickey,post_scores):
                                         public_key = data[prof_resp][record[tpkbc]][pkbc]
                                         username_publickey[username] = public_key
                                         print(f"  {poll_type} by: {username}")
+                                        info["polls_count"] = info.get("polls_count",0) + 1
                                         post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                         post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
 
@@ -367,7 +386,6 @@ def update_following(user_scores1,username_publickey,user_public_key,username_fo
 
 def generate_table(top_10):
     root = tk.Tk()
-    
     root.title("Deso Stats Table")
     column_widths = {
         "Username": 120,  # Adjust as needed
@@ -446,6 +464,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     else:
         last_posts = get_last_posts(user_public_key, NUM_POSTS_TO_FETCH)
     index=1
+    info={}
     if last_posts:
         for post in last_posts:
             if stop_flag:
@@ -455,8 +474,8 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             output_label.config(text=f"Calculating...{index}/{NUM_POSTS_TO_FETCH}")
             progress_bar["value"] = int((index*100)/NUM_POSTS_TO_FETCH)
             progress_bar.update_idletasks()
-            entry2.delete(0, tk.END) 
-            entry2.insert(tk.END, post_hash_hex)
+            entry_post_id.delete(0, tk.END) 
+            entry_post_id.insert(tk.END, post_hash_hex)
 
             if post["Body"] == "":
                 print("Skipping reposts")
@@ -467,14 +486,15 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             post_comments_body[post_hash_hex]["comments"] = {}
             reader_public_key = user_public_key
             print("["+str(index)+"]"+post_hash_hex)
+            
             index +=1
 
-            thread1 = threading.Thread(target=update_comments, args=(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores))
-            thread2 = threading.Thread(target=update_diamonds, args=(post_hash_hex,user_public_key,username_publickey,post_scores))
-            thread3 = threading.Thread(target=update_reposts, args=(post_hash_hex,user_public_key,post_scores))
-            thread4 = threading.Thread(target=update_quote_reposts, args=(post_hash_hex,user_public_key,post_scores))
-            thread5 = threading.Thread(target=update_reactions, args=(post_hash_hex,username_publickey,post_scores))
-            thread6 = threading.Thread(target=update_polls, args=(post,post_hash_hex,username_publickey,post_scores))
+            thread1 = threading.Thread(target=update_comments, args=(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores,info))
+            thread2 = threading.Thread(target=update_diamonds, args=(post_hash_hex,user_public_key,username_publickey,post_scores,info))
+            thread3 = threading.Thread(target=update_reposts, args=(post_hash_hex,user_public_key,post_scores,info))
+            thread4 = threading.Thread(target=update_quote_reposts, args=(post_hash_hex,user_public_key,post_scores,info))
+            thread5 = threading.Thread(target=update_reactions, args=(post_hash_hex,username_publickey,post_scores,info))
+            thread6 = threading.Thread(target=update_polls, args=(post,post_hash_hex,username_publickey,post_scores,info))
 
             thread1.start()
             thread2.start()
@@ -491,10 +511,22 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             thread6.join()
             print("Thread end")
 
+
     user_scores1 = calculate_user_category_scores(post_scores)
     result_steps.config(text=f"calculate user category scores")
     username_follow={}
-    
+
+    label_all_users_count.config(text="All Users: "+str(len(user_scores1)))
+    label_comment_count.config(text="Comments Count: "+str(info.get("comments_count",0)))
+    label_diamond_count.config(text="Diamonds Lvl 1 Count: "+str(info.get("diamonds_lvl1_count",0)))
+    label_diamond2_count.config(text="Diamonds Lvl 2 Count: "+str(info.get("diamonds_lvl2_count",0)))
+    label_diamond3_count.config(text="Diamonds Lvl 3 Count: "+str(info.get("diamonds_lvl3_count",0)))
+    label_diamond4_count.config(text="Diamonds Lvl 4 Count: "+str(info.get("diamonds_lvl4_count",0)))
+
+    label_reposts_count.config(text="Reposts Count: "+str(info.get("reposts_count",0)))
+    label_quote_reposts_count.config(text="Quote Reposts Count: "+str(info.get("quote_reposts_count",0)))
+    label_reaction_count.config(text="Reaction Count: "+str(info.get("reaction_count",0)))
+    label_polls_count.config(text="Polls Count: "+str(info.get("polls_count",0)))
     username_follow = update_following(user_scores1,username_publickey,user_public_key,username_follow)
 
     print("\nUser Post data:") 
@@ -538,6 +570,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     print("**End of All User Scores**")
     print()
     stop_flag = True
+    result_steps.config(text="")
     generate_table(top_10)
 
     output_label.config(text=f"Done")
@@ -551,13 +584,13 @@ def button_click():
             output_label.config(text="Existing calculation is running.")
             return
         
-        user = entry1.get()
-        post_hash = entry2.get()
+        user = entry_username.get()
+        post_hash = entry_post_id.get()
 
         if len(user)==0:
             output_label.config(text="Username Empty")
             return
-        if len(entry3.get())==0:
+        if len(entry_number_of_posts.get())==0:
             if len(post_hash)==0:
                 output_label.config(text="Number of posts to check is Empty")
                 return
@@ -571,7 +604,7 @@ def button_click():
         if len(post_hash)>0:
             NUM_POSTS_TO_FETCH=1
         else:
-            NUM_POSTS_TO_FETCH = int(entry3.get())
+            NUM_POSTS_TO_FETCH = int(entry_number_of_posts.get())
         stop_flag = False  # Reset stop flag
         calculation_thread = threading.Thread(target=calculate_stats, args=(user_pub_key, post_hash, output_label,NUM_POSTS_TO_FETCH))
         calculation_thread.start()
@@ -591,12 +624,11 @@ def stop_calculation():
         stop_flag = True
         output_label.config(text="Stopping calculation...")
 
-backround_colour = "#00a86b"
-foreground = "white"
+
 root = tk.Tk()
 root.title("Deso Stats Calculator")
 root.configure(bg=backround_colour)
-root.geometry("750x800+100+100")
+root.geometry("750x900+100+100")
 #Style setup
 style = ttk.Style()
 style.theme_use('clam')
@@ -606,38 +638,66 @@ style.map("TButton",
           foreground=[('pressed', 'black')],
           relief=[('pressed', 'sunken')]
           )
-label1 = ttk.Label(root, text="User Public Key or Username:", background=backround_colour, foreground=foreground, font=("Arial", 12))
-label1.grid(row=0, column=0, sticky="w", padx=5, pady=5)
-entry1 = ttk.Entry(root)
-entry1.grid(row=0, column=1, padx=5, pady=5, sticky="we")
-label2 = ttk.Label(root, text="Post ID (Single post Stats):", background=backround_colour, foreground=foreground, font=("Arial", 12))
-label2.grid(row=1, column=0, sticky="w", padx=5, pady=5)
-entry2 = ttk.Entry(root)
-entry2.grid(row=1, column=1, columnspan=3, padx=5, pady=5, sticky="we")
-label3 = ttk.Label(root, text="How many posts to check:", background=backround_colour, foreground=foreground, font=("Arial", 12))
-label3.grid(row=2, column=0, sticky="w", padx=5, pady=5)
-entry3 = ttk.Entry(root)
-entry3.grid(row=2, column=1, padx=5, pady=5, sticky="we")
-calculate_button = ttk.Button(root, text="Calculate", command=button_click)  # apply style here
-calculate_button.grid(row=3, column=0, columnspan=2, pady=10)
-stop_button = ttk.Button(root, text="Stop", command=stop_calculation)  # apply style here
-stop_button.grid(row=3, column=2, columnspan=2, pady=10)
-output_label = ttk.Label(root, text="", background=backround_colour, foreground=foreground, font=("Arial", 12))
-output_label.grid(row=4, column=0, columnspan=4, sticky="w", pady=5)
+info_frame = tk.Frame(root, bg="#009255")  # width of new column
+info_frame.grid(row=0, column=0, columnspan=2,rowspan=5, sticky="nsew",padx=5,pady=5)
+label_info = ttk.Label(info_frame, text="Information", background="#009255", foreground=foreground, font=("Arial", 12))
+label_all_users_count = ttk.Label(info_frame, text="All Users:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_comment_count = ttk.Label(info_frame, text="Comments Count: ", background="#009255", foreground=foreground, font=("Arial", 10))
+label_diamond_count = ttk.Label(info_frame, text="Diamonds Lvl 1 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_diamond2_count = ttk.Label(info_frame, text="Diamonds Lvl 2 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_diamond3_count = ttk.Label(info_frame, text="Diamonds Lvl 3 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_diamond4_count = ttk.Label(info_frame, text="Diamonds Lvl 4 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_reposts_count = ttk.Label(info_frame, text="Reposts Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_quote_reposts_count = ttk.Label(info_frame, text="Quote Reposts Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_reaction_count = ttk.Label(info_frame, text="Reaction Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_polls_count = ttk.Label(info_frame, text="Polls Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 
+input_frame = tk.Frame(root, bg=backround_colour)  # width of new column
+input_frame.grid(row=0, column=2, columnspan=3,rowspan=6, sticky="nsew",padx=5,pady=5)
+input_frame.columnconfigure(0, weight=1)
+label1 = ttk.Label(input_frame, text="User Public Key or Username:", background=backround_colour, foreground=foreground, font=("Arial", 12))
+label1.grid(row=0, column=0, padx=2, pady=2,sticky="w")
+entry_username = ttk.Entry(input_frame,font=("Arial", 12))
+entry_username.grid(row=1, column=0, padx=2, pady=2, sticky="w")
+
+label2 = ttk.Label(input_frame, text="Post ID:", background=backround_colour, foreground=foreground, font=("Arial", 12))
+label2.grid(row=2, column=0, sticky="w", padx=2, pady=2)
+entry_post_id = ttk.Entry(input_frame,font=("Arial", 12))
+entry_post_id.grid(row=3, column=0, columnspan=3, padx=2, pady=2, sticky="we")
+
+label3 = ttk.Label(input_frame, text="How many posts to check:", background=backround_colour, foreground=foreground, font=("Arial", 12))
+label3.grid(row=4, column=0, sticky="w", padx=2, pady=2)
+entry_number_of_posts = ttk.Entry(input_frame,font=("Arial", 12))
+entry_number_of_posts.grid(row=5, column=0, padx=2, pady=2, sticky="w")
+
+calculate_button = ttk.Button(root, text="Calculate", command=button_click)  # apply style here
+calculate_button.grid(row=6, column=2, columnspan=1, pady=10)
+stop_button = ttk.Button(root, text="Stop", command=stop_calculation)  # apply style here
+stop_button.grid(row=6, column=3, columnspan=1, pady=10)
+output_label = ttk.Label(root, text="", background=backround_colour, foreground=foreground, font=("Arial", 12))
+output_label.grid(row=6, column=1, columnspan=4, sticky="w", pady=5)
 # Progress bar setup
 style.configure("TProgressbar", padding=5,  background="#03ac6f", foreground="black", border=0, font=("Arial", 12))  # Explicit font
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=500, mode="determinate") #increased length
-progress_bar.grid(row=5, column=0, columnspan=4, sticky="ew", pady=5) # Added sticky="ew"
+progress_bar.grid(row=7, column=0, columnspan=4, sticky="ew", pady=5,padx=5) # Added sticky="ew"
 progress_bar["maximum"] = 100  # Set a default maximum value
 progress_bar.update_idletasks()  # Make sure it appears initially
-
-label4 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Clear if there is any Post ID\n3. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID", background=backround_colour, foreground="#D3D3D3", font=("Arial", 12))
-label4.grid(row=6, column=0, columnspan=4, sticky="w", padx=5, pady=5)
+label4 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Clear if there is any Post ID\n3. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID", background=backround_colour, foreground="#D3D3D3", font=("Arial", 9))
+label4.grid(row=8, column=0, columnspan=4, sticky="w", padx=5, pady=5)
 result_steps = ttk.Label(root, text="", background=backround_colour, foreground=foreground, font=("Arial", 12))
-result_steps.grid(row=6, column=1, columnspan=3, sticky="we", padx=5, pady=5)
-text_area = tk.Text(root, height=20, width=80, bg=backround_colour, fg=foreground, font=("Arial", 12))
-text_area.grid(row=7, column=0, columnspan=4, pady=10, padx=10)
+result_steps.grid(row=8, column=2, columnspan=2, sticky="we", padx=5, pady=5)
+text_area = tk.Text(root, height=20, width=80, bg="#009255", fg=foreground, font=("Arial", 12))
+text_area.grid(row=9, column=0, columnspan=4, pady=10, padx=10)
 text_area.config(state='disabled')
-
+label_info.grid(row=0, column=0, sticky="we")
+label_all_users_count.grid(row=1, column=0, sticky="we",padx=1, pady=1)
+label_comment_count.grid(row=2, column=0, sticky="we",padx=1, pady=1)
+label_diamond_count.grid(row=3, column=0, sticky="we",padx=1, pady=1)
+label_diamond2_count.grid(row=4, column=0, sticky="we",padx=1, pady=1)
+label_diamond3_count.grid(row=5, column=0, sticky="we",padx=1, pady=1)
+label_diamond4_count.grid(row=6, column=0, sticky="we",padx=1, pady=1)
+label_reposts_count.grid(row=7, column=0, sticky="we",padx=1, pady=1)
+label_quote_reposts_count.grid(row=8, column=0, sticky="we",padx=1, pady=1)
+label_reaction_count.grid(row=9, column=0, sticky="we",padx=1, pady=1)
+label_polls_count.grid(row=10, column=0, sticky="we",padx=1, pady=1)
 root.mainloop()
