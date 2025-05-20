@@ -3,6 +3,7 @@ from tkinter import ttk
 import requests
 import json
 import threading  # For background calculations
+import concurrent.futures
 
 blacklist = ["greenwork32","globalnetwork22"]  #bots accounts username list
 
@@ -245,6 +246,7 @@ def update_comments(post_comments_body,post_hash_hex,reader_public_key,username_
                             print(f"        Comment : {body}")
                             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                             post_scores[post_hash_hex][username]["comment"] = post_scores[post_hash_hex][username].get("comment", 0) + COMMENT_SCORE
+        get_first_commenter(post_scores,post_hash_hex)
 
 def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores):
     result_steps.config(text="Fetching diamonds...")
@@ -331,17 +333,42 @@ def update_polls(post,post_hash_hex,username_publickey,post_scores):
                                         post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                                         post_scores[post_hash_hex][username]["POLL"] = post_scores[post_hash_hex][username].get("POLL", 0) + POLL_SCORE
 
+
 def update_following(user_scores1,username_publickey,user_public_key,username_follow):
     output_label.config(text=f"Fetching following...")
-    follow_index = 1
-    for username in user_scores1:
-        follow_size= len(user_scores1)
-        result_steps.config(text=f"Fetching follow...({follow_index}/{follow_size})")
-        follow_index +=1
+    follow_size= len(user_scores1)
+    def process_username(username, username_publickey, user_public_key, FOLLOW_SCORE,local_counter):
+        """Processes a single username and calculates the follow score."""
+        global thread_counter  # Access the global counter
         public_key = username_publickey.get(username)
         isFollowing = is_following(public_key, user_public_key) if public_key else False
         follow_score = FOLLOW_SCORE if isFollowing else 0
-        username_follow[username] = follow_score
+        print(f"Thread {local_counter}: Processed {username}")  # Print the numbered message
+        result_steps.config(text=f"Fetching follow...({username}/{follow_size})")
+        return username, follow_score 
+
+    def calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=3):
+        """Calculates follow scores for multiple users using threads."""
+        username_follow = {}
+        local_counter = 0
+        futures = []
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            for username in user_scores1:
+                local_counter += 1
+                future = executor.submit(process_username, username, username_publickey, user_public_key, FOLLOW_SCORE, local_counter)
+                futures.append(future)
+
+        for future in futures:
+            try:
+                username, follow_score = future.result()
+                username_follow[username] = follow_score
+            except Exception as e:
+                print(f"Error processing {username}: {e}")
+
+        return username_follow
+
+    username_follow = calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=3)  # Explicitly set max_workers=3
+    return username_follow
 
 def generate_table(top_10):
     root = tk.Tk()
@@ -447,19 +474,31 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             print("["+str(index)+"]"+post_hash_hex)
             index +=1
 
-            update_comments(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores)
+            thread1 = threading.Thread(target=update_comments, args=(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores))
+            thread2 = threading.Thread(target=update_diamonds, args=(post_hash_hex,user_public_key,username_publickey,post_scores))
+            thread3 = threading.Thread(target=update_reposts, args=(post_hash_hex,user_public_key,post_scores))
+            thread4 = threading.Thread(target=update_quote_reposts, args=(post_hash_hex,user_public_key,post_scores))
+            thread5 = threading.Thread(target=update_reactions, args=(post_hash_hex,username_publickey,post_scores))
+            thread6 = threading.Thread(target=update_polls, args=(post,post_hash_hex,username_publickey,post_scores))
 
-            get_first_commenter(post_scores,post_hash_hex)
 
-            update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores)
+            thread1.start()
+            thread2.start()
+            thread3.start()
+            thread4.start()
+            thread5.start()
+            thread6.start()
 
-            update_reposts(post_hash_hex,user_public_key,post_scores)
+            thread1.join()
+            thread2.join()
+            thread3.join()
+            thread4.join()
+            thread5.join()
+            thread6.join()
+            print("Thread end")
 
-            update_quote_reposts(post_hash_hex,user_public_key,post_scores)
+            # get_first_commenter(post_scores,post_hash_hex)
 
-            update_reactions(post_hash_hex,username_publickey,post_scores)
-
-            update_polls(post,post_hash_hex,username_publickey,post_scores)
 
     
     
@@ -467,7 +506,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     result_steps.config(text=f"calculate user category scores")
     username_follow={}
     
-    update_following(user_scores1,username_publickey,user_public_key,username_follow)
+    username_follow = update_following(user_scores1,username_publickey,user_public_key,username_follow)
 
     
     print("\nUser Post data:") 
@@ -487,8 +526,16 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     print_to_terminal("")
     i=1
     for record in top_10:
-        print("["+str(i)+"] @"+record[0]+" :"+str(record[1]['total_score']))
-        print_to_terminal("["+str(i)+"] @"+record[0]+" :"+str(record[1]['total_score']))
+        total_score = record[1]['total_score']
+        badge = ""
+        if 300 <= total_score <= 500:
+            badge = " 🥉"
+        elif 501 <= total_score <= 1000:
+            badge = " 🥈"
+        elif total_score >= 1001:
+            badge = " 🥇"
+        print("["+str(i)+"] @"+record[0]+" :"+str(total_score)+badge)
+        print_to_terminal("["+str(i)+"] @"+record[0]+" :"+str(total_score)+badge)
         i +=1
     print("**End of User Scores**")
     print()
