@@ -1,5 +1,5 @@
 # DeSo-Scripts
-Python script to calculate user score based on post engagement
+Python script to calculate user score based on post engagement. Single post or multiple last N number of posts supported.
 
 ## Features
 1. comments
@@ -8,6 +8,8 @@ Python script to calculate user score based on post engagement
 4. quote_reposts
 5. reactions
 6. polls
+7. Follow
+8. CSV generation
 
 # Install required libraries
 python -m pip install requests
