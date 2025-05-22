@@ -383,7 +383,7 @@ def update_following(user_scores1,username_publickey,user_public_key,username_fo
 
         return username_follow
 
-    username_follow = calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=3)  # Explicitly set max_workers=3
+    username_follow = calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=5)  # Explicitly set max_workers=3
     return username_follow
 
 def generate_csv(username,data):
@@ -485,6 +485,60 @@ def generate_table(top_10):
     tree.place(x=100, y=100)
     tree.pack()
     root.mainloop()
+
+lock = threading.Lock()
+
+def process_post(post,post_scores,post_comments_body,user_public_key,username_publickey,info,NUM_POSTS_TO_FETCH):
+
+    if stop_flag:
+        output_label.config(text="Calculation stopped.")
+        return
+    post_hash_hex = post['PostHashHex']
+    with lock:
+        output_label.config(text="Calculating..."+str(info["post_index"])+"/"+str(NUM_POSTS_TO_FETCH))
+        progress_bar["value"] = int((info["post_index"]*100)/NUM_POSTS_TO_FETCH)
+        info["post_index"] = info.get("post_index",0) +1
+        progress_bar.update_idletasks()
+        entry_post_id.delete(0, tk.END) 
+        entry_post_id.insert(tk.END, post_hash_hex)
+    
+
+    if post["Body"] == "":
+        print("Skipping reposts")
+        return
+    post_scores[post_hash_hex] = {}
+    post_comments_body[post_hash_hex] = {}
+    
+    post_comments_body[post_hash_hex]["comments"] = {}
+    reader_public_key = user_public_key
+    with lock:
+        print("["+str(info["post_index"])+"]"+post_hash_hex)
+    
+    
+
+    thread1 = threading.Thread(target=update_comments, args=(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores,info))
+    thread2 = threading.Thread(target=update_diamonds, args=(post_hash_hex,user_public_key,username_publickey,post_scores,info))
+    thread3 = threading.Thread(target=update_reposts, args=(post_hash_hex,user_public_key,post_scores,info))
+    thread4 = threading.Thread(target=update_quote_reposts, args=(post_hash_hex,user_public_key,post_scores,info))
+    thread5 = threading.Thread(target=update_reactions, args=(post_hash_hex,username_publickey,post_scores,info))
+    thread6 = threading.Thread(target=update_polls, args=(post,post_hash_hex,username_publickey,post_scores,info))
+
+    thread1.start()
+    thread2.start()
+    thread3.start()
+    thread4.start()
+    thread5.start()
+    thread6.start()
+
+    thread1.join()
+    thread2.join()
+    thread3.join()
+    thread4.join()
+    thread5.join()
+    thread6.join()
+    print("Thread end")
+    return 1
+
 def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     global stop_flag
     post_scores = {} 
@@ -498,54 +552,24 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
         last_posts=[{"PostHashHex":single_post_hash_check,"Body":"Single","PostExtraData":{}}]
     else:
         last_posts = get_last_posts(user_public_key, NUM_POSTS_TO_FETCH)
-    index=1
     info={}
+    info["post_index"]=1
+    futures = []
     if last_posts:
-        for post in last_posts:
-            if stop_flag:
-                output_label.config(text="Calculation stopped.")
-                return
-            post_hash_hex = post['PostHashHex']
-            output_label.config(text=f"Calculating...{index}/{NUM_POSTS_TO_FETCH}")
-            progress_bar["value"] = int((index*100)/NUM_POSTS_TO_FETCH)
-            progress_bar.update_idletasks()
-            entry_post_id.delete(0, tk.END) 
-            entry_post_id.insert(tk.END, post_hash_hex)
-            index +=1
+        
+        
+        with concurrent.futures.ThreadPoolExecutor(max_workers=5) as executor:
+            for post in last_posts:
+                future = executor.submit(process_post, post,post_scores,post_comments_body,user_public_key,username_publickey,info,NUM_POSTS_TO_FETCH)
+                futures.append(future)
 
-            if post["Body"] == "":
-                print("Skipping reposts")
-                continue
-            post_scores[post_hash_hex] = {}
-            post_comments_body[post_hash_hex] = {}
-            
-            post_comments_body[post_hash_hex]["comments"] = {}
-            reader_public_key = user_public_key
-            print("["+str(index)+"]"+post_hash_hex)
-            
-            
-
-            thread1 = threading.Thread(target=update_comments, args=(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores,info))
-            thread2 = threading.Thread(target=update_diamonds, args=(post_hash_hex,user_public_key,username_publickey,post_scores,info))
-            thread3 = threading.Thread(target=update_reposts, args=(post_hash_hex,user_public_key,post_scores,info))
-            thread4 = threading.Thread(target=update_quote_reposts, args=(post_hash_hex,user_public_key,post_scores,info))
-            thread5 = threading.Thread(target=update_reactions, args=(post_hash_hex,username_publickey,post_scores,info))
-            thread6 = threading.Thread(target=update_polls, args=(post,post_hash_hex,username_publickey,post_scores,info))
-
-            thread1.start()
-            thread2.start()
-            thread3.start()
-            thread4.start()
-            thread5.start()
-            thread6.start()
-
-            thread1.join()
-            thread2.join()
-            thread3.join()
-            thread4.join()
-            thread5.join()
-            thread6.join()
-            print("Thread end")
+        for future in futures:
+            try:
+                result=future.result()
+               
+                
+            except Exception as e:
+                print(f"Error processing {username}: {e}")
 
 
     user_scores1 = calculate_user_category_scores(post_scores)
