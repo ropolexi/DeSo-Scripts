@@ -41,14 +41,15 @@ def api_get(endpoint, payload=None):
         print(f"API Error: {e}")
         return None
 
-def get_single_profile(Username):
+def get_single_profile(Username,PublicKeyBase58Check=""):
     payload = {
         "NoErrorOnMissing": False,
-        "PublicKeyBase58Check": "",
+        "PublicKeyBase58Check": PublicKeyBase58Check,
         "Username": Username
     }
     data = api_get("get-single-profile", payload)
     return data
+
 
 def post_associations_counts(post_hash,AssociationType,AssociationValues):
     payload = {
@@ -276,7 +277,24 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
             if sender["DiamondLevel"]==4:
                 info["diamonds_lvl4_count"] = info.get("diamonds_lvl4_count",0) + 1
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
-            post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score           
+            post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score     
+    
+    #focus diamonds
+    diamond_summary = post_associations_counts(post_hash_hex,"DIAMOND",[])
+    if diamond_summary["Total"]>0:
+        for like_type in diamond_summary["Counts"]:
+            if diamond_summary["Counts"][like_type]>0:
+                    data = get_post_associations(post_hash_hex,"DIAMOND", like_type)
+                    if data and "Associations" in data:
+                        for record in data["Associations"]:
+                            user_data = get_single_profile("",record["ExtraData"]["SenderPublicKey"])
+                            username = user_data["Profile"]["Username"]
+                            diamond_level_score = pow(10, int(record["ExtraData"]["Level"]))
+                            print(f"  Lvl {diamond_level_score} Diamond  sent by: {username}")
+                            post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
+                            post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
+         
+
 def update_reposts(post_hash_hex,user_public_key,post_scores,info):
     result_steps.config(text="Fetching reposts...")
     if repost_details := get_reposts(post_hash_hex, user_public_key):
@@ -331,7 +349,7 @@ def update_polls(post,post_hash_hex,username_publickey,post_scores,info):
     if "PollOptions" in post["PostExtraData"]:
         result_steps.config(text="Fetching polls...")
         poll_summary = post_associations_counts(post_hash_hex,"POLL_RESPONSE",json.loads(post["PostExtraData"]["PollOptions"]))
-        #print(json.loads(post["PostExtraData"]["PollOptions"]))
+        
         #print(poll_summary)
         if poll_summary:
             if "Total" in poll_summary:
@@ -553,7 +571,7 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
     else:
         last_posts = get_last_posts(user_public_key, NUM_POSTS_TO_FETCH)
     info={}
-    info["post_index"]=1
+    info["post_index"]=0
     futures = []
     if last_posts:
         
