@@ -279,7 +279,7 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score     
     
-    #focus diamonds
+    #focus diamonds - focus diamond lvl 1 mean diamondapp diamond lvl 2
     diamond_summary = post_associations_counts(post_hash_hex,"DIAMOND",[])
     if diamond_summary["Total"]>0:
         for like_type in diamond_summary["Counts"]:
@@ -289,8 +289,9 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
                         for record in data["Associations"]:
                             user_data = get_single_profile("",record["ExtraData"]["SenderPublicKey"])
                             username = user_data["Profile"]["Username"]
-                            diamond_level_score = pow(10, int(record["ExtraData"]["Level"]))
-                            print(f"  Lvl {diamond_level_score} Diamond  sent by: {username}")
+                            level=int(record["ExtraData"]["Level"])+1
+                            diamond_level_score = pow(10, level - 1)
+                            print(f"  Lvl {level} Diamond  sent by: {username}")
                             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
          
