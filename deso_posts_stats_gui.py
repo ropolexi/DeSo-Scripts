@@ -4,6 +4,8 @@ import requests
 import json
 import threading  # For background calculations
 import concurrent.futures
+import csv
+import datetime
 
 blacklist = ["greenwork32","globalnetwork22"]  #bots accounts username list
 
@@ -361,7 +363,7 @@ def update_following(user_scores1,username_publickey,user_public_key,username_fo
         result_steps.config(text=f"Fetching follow...({username}/{follow_size})")
         return username, follow_score 
 
-    def calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=3):
+    def calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=5):
         """Calculates follow scores for multiple users using threads."""
         username_follow = {}
         local_counter = 0
@@ -383,6 +385,39 @@ def update_following(user_scores1,username_publickey,user_public_key,username_fo
 
     username_follow = calculate_follow_scores(user_scores1, username_publickey, user_public_key, FOLLOW_SCORE, max_workers=3)  # Explicitly set max_workers=3
     return username_follow
+
+def generate_csv(username,data):
+    # Generate filename with current date and time
+    now = datetime.datetime.now()
+    filename = f"{username}_{len(data)}_{now.strftime('%Y%m%d_%H%M%S')}.csv"
+    # Write data to CSV file
+    with open(filename, 'w', newline='' ,encoding="utf-8") as outfile:
+        writer = csv.writer(outfile)
+
+        # Write header row
+        writer.writerow(["👤","💬","💎","🔁","📢","👍","❤️","👎","😥","😮","😠","😂","📊","➕","💯"])
+
+        # Write data rows
+        for username, details in data:
+            row = [
+                username,
+                details["post_scores"].get('comment', ''),  # Use .get() with a default value
+                details["post_scores"].get('diamond', ''),
+                details["post_scores"].get('repost', ''),
+                details["post_scores"].get('quote_repost', ''),
+                details["post_scores"].get('LIKE', ''),
+                details["post_scores"].get('LOVE', ''),
+                details["post_scores"].get('DISLIKE', ''),
+                details["post_scores"].get('SAD', ''),
+                details["post_scores"].get('ASTONISHED', ''),
+                details["post_scores"].get('ANGRY', ''),
+                details["post_scores"].get('LAUGH', ''),
+                details["post_scores"].get('POLL', ''),
+                details.get('follow_score', ''),
+                details.get('total_score', '')
+            ]
+            writer.writerow(row)
+    print(f"{len(data)} users written to {filename}")
 
 def generate_table(top_10):
     root = tk.Tk()
@@ -450,7 +485,7 @@ def generate_table(top_10):
     tree.place(x=100, y=100)
     tree.pack()
     root.mainloop()
-def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
+def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     global stop_flag
     post_scores = {} 
     post_comments_body={}
@@ -476,6 +511,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             progress_bar.update_idletasks()
             entry_post_id.delete(0, tk.END) 
             entry_post_id.insert(tk.END, post_hash_hex)
+            index +=1
 
             if post["Body"] == "":
                 print("Skipping reposts")
@@ -487,7 +523,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
             reader_public_key = user_public_key
             print("["+str(index)+"]"+post_hash_hex)
             
-            index +=1
+            
 
             thread1 = threading.Thread(target=update_comments, args=(post_comments_body,post_hash_hex,reader_public_key,username_publickey,post_scores,info))
             thread2 = threading.Thread(target=update_diamonds, args=(post_hash_hex,user_public_key,username_publickey,post_scores,info))
@@ -555,7 +591,7 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
         elif total_score >= 1001:
             badge = " 🥇"
         print("["+str(i)+"] @"+record[0]+" :"+str(total_score)+badge)
-        print_to_terminal("["+str(i)+"] @"+record[0]+" :"+str(total_score)+badge)
+        print_to_terminal("\n["+str(i)+"] @"+record[0]+" :"+str(total_score)+badge)
         i +=1
     print("**End of User Scores**")
     print()
@@ -572,6 +608,9 @@ def calculate_stats(user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
     stop_flag = True
     result_steps.config(text="")
     generate_table(top_10)
+
+    generate_csv(username,top_10)   #save top 10 to csv
+    generate_csv(username,sorted_data) #save all users to csv
 
     output_label.config(text=f"Done")
     result_steps.config(text="")
@@ -606,7 +645,7 @@ def button_click():
         else:
             NUM_POSTS_TO_FETCH = int(entry_number_of_posts.get())
         stop_flag = False  # Reset stop flag
-        calculation_thread = threading.Thread(target=calculate_stats, args=(user_pub_key, post_hash, output_label,NUM_POSTS_TO_FETCH))
+        calculation_thread = threading.Thread(target=calculate_stats, args=(user,user_pub_key, post_hash, output_label,NUM_POSTS_TO_FETCH))
         calculation_thread.start()
      
     except Exception as e:
