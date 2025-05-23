@@ -518,7 +518,7 @@ def generate_table(top_10,heading):
 
     tree.place(x=5, y=40)  # Increased y coordinate
     heading_label = tk.Label(root, text=heading, font=("Arial", 16, "bold"))
-    heading_label.place(relx=0.5, rely=0.05, anchor=tk.CENTER)
+    heading_label.place(relx=0.5, y=15, anchor=tk.CENTER)
 
     root.mainloop()
 
@@ -531,9 +531,9 @@ def process_post(post,post_scores,post_comments_body,user_public_key,username_pu
         return
     post_hash_hex = post['PostHashHex']
     with lock:
+        info["post_index"] = info.get("post_index",0) +1
         output_label.config(text="Calculating..."+str(info["post_index"])+"/"+str(NUM_POSTS_TO_FETCH))
         progress_bar["value"] = int((info["post_index"]*100)/NUM_POSTS_TO_FETCH)
-        info["post_index"] = info.get("post_index",0) +1
         progress_bar.update_idletasks()
         entry_post_id.delete(0, tk.END) 
         entry_post_id.insert(tk.END, post_hash_hex)
@@ -602,8 +602,7 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
         for future in futures:
             try:
                 result=future.result()
-               
-                
+                              
             except Exception as e:
                 print(f"Error processing {username}: {e}")
 
