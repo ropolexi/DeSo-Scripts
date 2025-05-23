@@ -453,6 +453,7 @@ def generate_table(top_10,heading):
     root.title("Deso Stats Table")
     root.geometry("750x400+100+100")
     column_widths = {
+        "Rank": 20,
         "Username": 120,  # Adjust as needed
         "comment": 40,
         "diamond": 50,
@@ -470,15 +471,15 @@ def generate_table(top_10,heading):
         "Total Score": 60
     }
 
-    tree = ttk.Treeview(root, columns=list(column_widths.keys()), show="headings")
-  
+    tree = ttk.Treeview(root, columns=list(column_widths.keys()), show="headings",height=30)
+   
     for col, width in column_widths.items():
         tree.heading(col, text=col)
         if col != "Username":
             tree.column(col, width=width, anchor=tk.CENTER)
         else:
             tree.column(col, width=width, anchor=tk.W)  #Left Align Username
-
+    tree.heading("Rank", text="#")
     tree.heading("Username", text="👤")
     tree.heading("comment", text="💬")
     tree.heading("diamond", text="💎")
@@ -494,10 +495,11 @@ def generate_table(top_10,heading):
     tree.heading("poll", text="📊")
     tree.heading("Follow Score", text="➕")
     tree.heading("Total Score", text="💯")
-
+    rank=1
     for username, info in top_10:
         tree.insert("", "end", 
-                    values=(username, 
+                    values=(rank,
+                            username, 
                             info['post_scores'].get('comment',''), 
                             info['post_scores'].get('diamond',''), 
                             info['post_scores'].get('repost',''), 
@@ -512,8 +514,9 @@ def generate_table(top_10,heading):
                             info['post_scores'].get('POLL',''), 
                             info['follow_score'], 
                             info['total_score']))
+        rank +=1
 
-    tree.place(x=5, y=100)  # Increased y coordinate
+    tree.place(x=5, y=40)  # Increased y coordinate
     heading_label = tk.Label(root, text=heading, font=("Arial", 16, "bold"))
     heading_label.place(relx=0.5, rely=0.05, anchor=tk.CENTER)
 
