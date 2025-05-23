@@ -276,6 +276,8 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
                 info["diamonds_lvl3_count"] = info.get("diamonds_lvl3_count",0) + 1
             if sender["DiamondLevel"]==4:
                 info["diamonds_lvl4_count"] = info.get("diamonds_lvl4_count",0) + 1
+            if sender["DiamondLevel"]==5:
+                info["diamonds_lvl5_count"] = info.get("diamonds_lvl5_count",0) + 1
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score     
     
@@ -438,13 +440,14 @@ def generate_csv(username,data):
             writer.writerow(row)
     print(f"{len(data)} users written to {filename}")
 
-def generate_table(top_10):
+def generate_table(top_10,heading):
     root = tk.Tk()
     root.title("Deso Stats Table")
+    root.geometry("720x400+100+100")
     column_widths = {
         "Username": 120,  # Adjust as needed
         "comment": 40,
-        "diamond": 40,
+        "diamond": 50,
         "repost": 40,
         "quote_repost": 40,
         "LIKE": 40,
@@ -456,10 +459,11 @@ def generate_table(top_10):
         "LAUGH": 40,
         "poll": 40,
         "Follow Score": 40,
-        "Total Score": 40
+        "Total Score": 60
     }
 
     tree = ttk.Treeview(root, columns=list(column_widths.keys()), show="headings")
+  
     for col, width in column_widths.items():
         tree.heading(col, text=col)
         if col != "Username":
@@ -501,8 +505,10 @@ def generate_table(top_10):
                             info['follow_score'], 
                             info['total_score']))
 
-    tree.place(x=100, y=100)
-    tree.pack()
+    tree.place(x=5, y=100)  # Increased y coordinate
+    heading_label = tk.Label(root, text=heading, font=("Arial", 16, "bold"))
+    heading_label.place(relx=0.5, rely=0.05, anchor=tk.CENTER)
+
     root.mainloop()
 
 lock = threading.Lock()
@@ -601,6 +607,7 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
     label_diamond2_count.config(text="Diamonds Lvl 2 Count: "+str(info.get("diamonds_lvl2_count",0)))
     label_diamond3_count.config(text="Diamonds Lvl 3 Count: "+str(info.get("diamonds_lvl3_count",0)))
     label_diamond4_count.config(text="Diamonds Lvl 4 Count: "+str(info.get("diamonds_lvl4_count",0)))
+    label_diamond5_count.config(text="Diamonds Lvl 5 Count: "+str(info.get("diamonds_lvl5_count",0)))
 
     label_reposts_count.config(text="Reposts Count: "+str(info.get("reposts_count",0)))
     label_quote_reposts_count.config(text="Quote Reposts Count: "+str(info.get("quote_reposts_count",0)))
@@ -650,7 +657,7 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
     print()
     stop_flag = True
     result_steps.config(text="")
-    generate_table(top_10)
+    generate_table(top_10,username + " Last "+str(NUM_POSTS_TO_FETCH)+" Posts User Engagement Results")
 
     generate_csv(username,top_10)   #save top 10 to csv
     generate_csv(username,sorted_data) #save all users to csv
@@ -729,6 +736,7 @@ label_diamond_count = ttk.Label(info_frame, text="Diamonds Lvl 1 Count:", backgr
 label_diamond2_count = ttk.Label(info_frame, text="Diamonds Lvl 2 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_diamond3_count = ttk.Label(info_frame, text="Diamonds Lvl 3 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_diamond4_count = ttk.Label(info_frame, text="Diamonds Lvl 4 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_diamond5_count = ttk.Label(info_frame, text="Diamonds Lvl 5 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_reposts_count = ttk.Label(info_frame, text="Reposts Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_quote_reposts_count = ttk.Label(info_frame, text="Quote Reposts Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_reaction_count = ttk.Label(info_frame, text="Reaction Count:", background="#009255", foreground=foreground, font=("Arial", 10))
@@ -778,8 +786,9 @@ label_diamond_count.grid(row=3, column=0, sticky="we",padx=1, pady=1)
 label_diamond2_count.grid(row=4, column=0, sticky="we",padx=1, pady=1)
 label_diamond3_count.grid(row=5, column=0, sticky="we",padx=1, pady=1)
 label_diamond4_count.grid(row=6, column=0, sticky="we",padx=1, pady=1)
-label_reposts_count.grid(row=7, column=0, sticky="we",padx=1, pady=1)
-label_quote_reposts_count.grid(row=8, column=0, sticky="we",padx=1, pady=1)
-label_reaction_count.grid(row=9, column=0, sticky="we",padx=1, pady=1)
-label_polls_count.grid(row=10, column=0, sticky="we",padx=1, pady=1)
+label_diamond5_count.grid(row=7, column=0, sticky="we",padx=1, pady=1)
+label_reposts_count.grid(row=8, column=0, sticky="we",padx=1, pady=1)
+label_quote_reposts_count.grid(row=9, column=0, sticky="we",padx=1, pady=1)
+label_reaction_count.grid(row=10, column=0, sticky="we",padx=1, pady=1)
+label_polls_count.grid(row=11, column=0, sticky="we",padx=1, pady=1)
 root.mainloop()
