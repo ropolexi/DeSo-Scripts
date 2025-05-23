@@ -302,6 +302,16 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
                             level=int(record["ExtraData"]["Level"])+1
                             diamond_level_score = pow(10, level - 1)
                             print(f"  Lvl {level} Diamond  sent by: {username}")
+                            if level==1:
+                                info["diamonds_lvl1_count"] = info.get("diamonds_lvl1_count",0) + 1
+                            if level==2:
+                                info["diamonds_lvl2_count"] = info.get("diamonds_lvl2_count",0) + 1
+                            if level==3:
+                                info["diamonds_lvl3_count"] = info.get("diamonds_lvl3_count",0) + 1
+                            if level==4:
+                                info["diamonds_lvl4_count"] = info.get("diamonds_lvl4_count",0) + 1
+                            if level==5:
+                                info["diamonds_lvl5_count"] = info.get("diamonds_lvl5_count",0) + 1
                             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
          
