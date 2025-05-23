@@ -286,6 +286,8 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
                 info["diamonds_lvl4_count"] = info.get("diamonds_lvl4_count",0) + 1
             if sender["DiamondLevel"]==5:
                 info["diamonds_lvl5_count"] = info.get("diamonds_lvl5_count",0) + 1
+            if sender["DiamondLevel"]==6:
+                info["diamonds_lvl6_count"] = info.get("diamonds_lvl6_count",0) + 1
             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score     
     
@@ -312,6 +314,8 @@ def update_diamonds(post_hash_hex,user_public_key,username_publickey,post_scores
                                 info["diamonds_lvl4_count"] = info.get("diamonds_lvl4_count",0) + 1
                             if level==5:
                                 info["diamonds_lvl5_count"] = info.get("diamonds_lvl5_count",0) + 1
+                            if level==6:
+                                info["diamonds_lvl6_count"] = info.get("diamonds_lvl6_count",0) + 1
                             post_scores[post_hash_hex][username] = post_scores[post_hash_hex].get(username, {})
                             post_scores[post_hash_hex][username]["diamond"] = post_scores[post_hash_hex][username].get("diamond", 0) + diamond_level_score
          
@@ -628,6 +632,7 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
     label_diamond3_count.config(text="Diamonds Lvl 3 Count: "+str(info.get("diamonds_lvl3_count",0)))
     label_diamond4_count.config(text="Diamonds Lvl 4 Count: "+str(info.get("diamonds_lvl4_count",0)))
     label_diamond5_count.config(text="Diamonds Lvl 5 Count: "+str(info.get("diamonds_lvl5_count",0)))
+    label_diamond6_count.config(text="Diamonds Lvl 6 Count: "+str(info.get("diamonds_lvl6_count",0)))
 
     label_reposts_count.config(text="Reposts Count: "+str(info.get("reposts_count",0)))
     label_quote_reposts_count.config(text="Quote Reposts Count: "+str(info.get("quote_reposts_count",0)))
@@ -764,6 +769,7 @@ label_diamond2_count = ttk.Label(info_frame, text="Diamonds Lvl 2 Count:", backg
 label_diamond3_count = ttk.Label(info_frame, text="Diamonds Lvl 3 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_diamond4_count = ttk.Label(info_frame, text="Diamonds Lvl 4 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_diamond5_count = ttk.Label(info_frame, text="Diamonds Lvl 5 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
+label_diamond6_count = ttk.Label(info_frame, text="Diamonds Lvl 6 Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_reposts_count = ttk.Label(info_frame, text="Reposts Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_quote_reposts_count = ttk.Label(info_frame, text="Quote Reposts Count:", background="#009255", foreground=foreground, font=("Arial", 10))
 label_reaction_count = ttk.Label(info_frame, text="Reaction Count:", background="#009255", foreground=foreground, font=("Arial", 10))
@@ -819,8 +825,9 @@ label_diamond2_count.grid(row=4, column=0, sticky="we",padx=1, pady=1)
 label_diamond3_count.grid(row=5, column=0, sticky="we",padx=1, pady=1)
 label_diamond4_count.grid(row=6, column=0, sticky="we",padx=1, pady=1)
 label_diamond5_count.grid(row=7, column=0, sticky="we",padx=1, pady=1)
-label_reposts_count.grid(row=8, column=0, sticky="we",padx=1, pady=1)
-label_quote_reposts_count.grid(row=9, column=0, sticky="we",padx=1, pady=1)
-label_reaction_count.grid(row=10, column=0, sticky="we",padx=1, pady=1)
-label_polls_count.grid(row=11, column=0, sticky="we",padx=1, pady=1)
+label_diamond6_count.grid(row=8, column=0, sticky="we",padx=1, pady=1)
+label_reposts_count.grid(row=9, column=0, sticky="we",padx=1, pady=1)
+label_quote_reposts_count.grid(row=10, column=0, sticky="we",padx=1, pady=1)
+label_reaction_count.grid(row=11, column=0, sticky="we",padx=1, pady=1)
+label_polls_count.grid(row=12, column=0, sticky="we",padx=1, pady=1)
 root.mainloop()
