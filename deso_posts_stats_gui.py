@@ -443,7 +443,7 @@ def generate_csv(username,data):
 def generate_table(top_10,heading):
     root = tk.Tk()
     root.title("Deso Stats Table")
-    root.geometry("720x400+100+100")
+    root.geometry("750x400+100+100")
     column_widths = {
         "Username": 120,  # Adjust as needed
         "comment": 40,
