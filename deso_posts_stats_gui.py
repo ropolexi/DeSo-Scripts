@@ -17,6 +17,14 @@ FOLLOW_SCORE = 100
 LIKE_SCORE = 1
 POLL_SCORE = 10
 
+# COMMENT_SCORE = 1
+# FIRST_COMMENT_SCORE = 0
+# REPOST_SCORE = 1
+# QUOTE_REPOST_SCORE = 1
+# FOLLOW_SCORE = 1
+# LIKE_SCORE = 1
+# POLL_SCORE = 1
+
 backround_colour = "#00a86b"
 foreground = "white"
 
@@ -564,7 +572,7 @@ def process_post(post,post_scores,post_comments_body,user_public_key,username_pu
     print("Thread end")
     return 1
 
-def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH):
+def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FETCH,number_top_users):
     global stop_flag
     post_scores = {} 
     post_comments_body={}
@@ -625,10 +633,10 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
     combined_data = combine_data(user_scores1, username_follow)
 
     sorted_data = sorted(combined_data.items(), key=lambda item: item[1]['total_score'], reverse=True)
-    top_10 = sorted_data[:10]
+    top_10 = sorted_data[:number_top_users]
     print()
-    print("**Top 10 User Scores**")
-    print_to_terminal("**Top 10 User Scores**")
+    print("**Top "+str(number_top_users)+" User Scores**")
+    print_to_terminal("**Top "+str(number_top_users)+" User Scores**")
     print_to_terminal("")
     i=1
     for record in top_10:
@@ -657,7 +665,7 @@ def calculate_stats(username,user_pubkey,post_hash,output_label,NUM_POSTS_TO_FET
     print()
     stop_flag = True
     result_steps.config(text="")
-    generate_table(top_10,username + " Last "+str(NUM_POSTS_TO_FETCH)+" Posts User Engagement Results")
+    generate_table(top_10,username + " Last "+str(NUM_POSTS_TO_FETCH)+" Posts Top "+str(number_top_users)+" User Engagement Results")
 
     generate_csv(username,top_10)   #save top 10 to csv
     generate_csv(username,sorted_data) #save all users to csv
@@ -675,6 +683,7 @@ def button_click():
         
         user = entry_username.get()
         post_hash = entry_post_id.get()
+        
 
         if len(user)==0:
             output_label.config(text="Username Empty")
@@ -683,6 +692,10 @@ def button_click():
             if len(post_hash)==0:
                 output_label.config(text="Number of posts to check is Empty")
                 return
+            
+        if len(entry_number_of_top_users.get())==0:
+            output_label.config(text="Number of top users limit is Empty")
+            return
         
         if len(user) != 55:
             user_data = get_single_profile(user)
@@ -694,8 +707,10 @@ def button_click():
             NUM_POSTS_TO_FETCH=1
         else:
             NUM_POSTS_TO_FETCH = int(entry_number_of_posts.get())
+
+        number_top_users=int(entry_number_of_top_users.get())
         stop_flag = False  # Reset stop flag
-        calculation_thread = threading.Thread(target=calculate_stats, args=(user,user_pub_key, post_hash, output_label,NUM_POSTS_TO_FETCH))
+        calculation_thread = threading.Thread(target=calculate_stats, args=(user,user_pub_key, post_hash, output_label,NUM_POSTS_TO_FETCH,number_top_users))
         calculation_thread.start()
      
     except Exception as e:
@@ -760,24 +775,29 @@ label3.grid(row=4, column=0, sticky="w", padx=2, pady=2)
 entry_number_of_posts = ttk.Entry(input_frame,font=("Arial", 12))
 entry_number_of_posts.grid(row=5, column=0, padx=2, pady=2, sticky="w")
 
+label4 = ttk.Label(input_frame, text="How many top users to show:", background=backround_colour, foreground=foreground, font=("Arial", 12))
+label4.grid(row=6, column=0, sticky="w", padx=2, pady=2)
+entry_number_of_top_users = ttk.Entry(input_frame,font=("Arial", 12))
+entry_number_of_top_users.grid(row=7, column=0, padx=2, pady=2, sticky="w")
+
 calculate_button = ttk.Button(root, text="Calculate", command=button_click)  # apply style here
-calculate_button.grid(row=6, column=2, columnspan=1, pady=10)
+calculate_button.grid(row=8, column=2, columnspan=1, pady=1)
 stop_button = ttk.Button(root, text="Stop", command=stop_calculation)  # apply style here
-stop_button.grid(row=6, column=3, columnspan=1, pady=10)
+stop_button.grid(row=8, column=3, columnspan=1, pady=1)
 output_label = ttk.Label(root, text="", background=backround_colour, foreground=foreground, font=("Arial", 12))
-output_label.grid(row=6, column=1, columnspan=4, sticky="w", pady=5)
+output_label.grid(row=8, column=0, columnspan=4, sticky="w", pady=5)
 # Progress bar setup
 style.configure("TProgressbar", padding=5,  background="#03ac6f", foreground="black", border=0, font=("Arial", 12))  # Explicit font
 progress_bar = ttk.Progressbar(root, orient="horizontal", length=500, mode="determinate") #increased length
-progress_bar.grid(row=7, column=0, columnspan=4, sticky="ew", pady=5,padx=5) # Added sticky="ew"
+progress_bar.grid(row=9, column=0, columnspan=4, sticky="ew", pady=5,padx=5) # Added sticky="ew"
 progress_bar["maximum"] = 100  # Set a default maximum value
 progress_bar.update_idletasks()  # Make sure it appears initially
 label4 = ttk.Label(root, text="Instructions:\nTo check for last number of posts information \n1. Enter User Public Key or username\n2. Clear if there is any Post ID\n3. Enter How many posts to check\n\nTo check specific post information\n1. Enter User Public Key or username\n2. Enter Post ID", background=backround_colour, foreground="#D3D3D3", font=("Arial", 9))
-label4.grid(row=8, column=0, columnspan=4, sticky="w", padx=5, pady=5)
+label4.grid(row=10, column=0, columnspan=4, sticky="w", padx=5, pady=5)
 result_steps = ttk.Label(root, text="", background=backround_colour, foreground=foreground, font=("Arial", 12))
-result_steps.grid(row=8, column=2, columnspan=2, sticky="we", padx=5, pady=5)
+result_steps.grid(row=10, column=2, columnspan=2, sticky="we", padx=5, pady=5)
 text_area = tk.Text(root, height=20, width=80, bg="#009255", fg=foreground, font=("Arial", 12))
-text_area.grid(row=9, column=0, columnspan=4, pady=10, padx=10)
+text_area.grid(row=11, column=0, columnspan=4, pady=10, padx=10)
 text_area.config(state='disabled')
 label_info.grid(row=0, column=0, sticky="we")
 label_all_users_count.grid(row=1, column=0, sticky="we",padx=1, pady=1)
